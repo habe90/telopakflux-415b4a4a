@@ -42,7 +42,7 @@ function ModalShell({title,sub,close,children,danger=false,wide=false}){return <
 function ModalActions({close,children}){return <div className="modal-actions"><button type="button" className="secondary" onClick={close}>Odustani</button>{children}</div>}
 function Field({label,children,full=false,hint}){return <label className={full?'full':''}>{label}{children}{hint&&<span className="field-help">{hint}</span>}</label>}
 function Input({value,onChange,...p}){return <input value={value||''} onChange={e=>onChange(e.target.value)} {...p}/>} function Select({value,onChange,children}){return <select value={value||''} onChange={e=>onChange(e.target.value)}>{children}</select>}
-function EUDate({value,onChange}){const [open,setOpen]=useState(false);const parse=()=>{const m=(value||'25.03.2025.').match(/(\d{2})\.(\d{2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):new Date()};const [view,setView]=useState(parse());const days=new Date(view.getFullYear(),view.getMonth()+1,0).getDate();const off=(new Date(view.getFullYear(),view.getMonth(),1).getDay()+6)%7;const fmt=d=>`${String(d).padStart(2,'0')}.${String(view.getMonth()+1).padStart(2,'0')}.${view.getFullYear()}.`;return <div className="mini-picker"><button type="button" className="picker-input" onClick={()=>setOpen(!open)}><CalendarDays/>{value||'Odaberite datum'}</button>{open&&<div className="mini-calendar"><div><button type="button" onClick={()=>setView(new Date(view.getFullYear(),view.getMonth()-1,1))}><ChevronLeft/></button><strong>{['Januar','Februar','Mart','April','Maj','Juni','Juli','August','Septembar','Oktobar','Novembar','Decembar'][view.getMonth()]} {view.getFullYear()}</strong><button type="button" onClick={()=>setView(new Date(view.getFullYear(),view.getMonth()+1,1))}><ChevronRight/></button></div><section>{['Po','Ut','Sr','Če','Pe','Su','Ne'].map(x=><small key={x}>{x}</small>)}{Array(off).fill(0).map((_,i)=><i key={`e${i}`}/>)}{Array(days).fill(0).map((_,i)=><button type="button" key={i} onClick={()=>{onChange(fmt(i+1));setOpen(false)}} className={value===fmt(i+1)?'selected':''}>{i+1}</button>)}</section></div>}</div>}
+function EUDate({value,onChange,minDate}){const [open,setOpen]=useState(false);const parse=()=>{const m=(value||'').match(/(\d{2})\.(\d{2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):new Date()};const [view,setView]=useState(parse());const days=new Date(view.getFullYear(),view.getMonth()+1,0).getDate();const off=(new Date(view.getFullYear(),view.getMonth(),1).getDay()+6)%7;const fmt=d=>`${String(d).padStart(2,'0')}.${String(view.getMonth()+1).padStart(2,'0')}.${view.getFullYear()}.`;const min=minDate?new Date(minDate.getFullYear(),minDate.getMonth(),minDate.getDate()):null;return <div className="mini-picker"><button type="button" className="picker-input" onClick={()=>setOpen(!open)}><CalendarDays/>{value||'Odaberite datum'}</button>{open&&<div className="mini-calendar"><div><button type="button" onClick={()=>setView(new Date(view.getFullYear(),view.getMonth()-1,1))}><ChevronLeft/></button><strong>{['Januar','Februar','Mart','April','Maj','Juni','Juli','August','Septembar','Oktobar','Novembar','Decembar'][view.getMonth()]} {view.getFullYear()}</strong><button type="button" onClick={()=>setView(new Date(view.getFullYear(),view.getMonth()+1,1))}><ChevronRight/></button></div><section>{['Po','Ut','Sr','Če','Pe','Su','Ne'].map(x=><small key={x}>{x}</small>)}{Array(off).fill(0).map((_,i)=><i key={`e${i}`}/>)}{Array(days).fill(0).map((_,i)=>{const date=new Date(view.getFullYear(),view.getMonth(),i+1);const disabled=!!min&&date<min;return <button type="button" key={i} disabled={disabled} title={disabled?'Nije moguće zakazati termin u prošlosti':''} onClick={()=>{if(disabled)return;onChange(fmt(i+1));setOpen(false)}} className={`${value===fmt(i+1)?'selected ':''}${disabled?'past-date':''}`}>{i+1}</button>})}</section></div>}</div>}
 function EUTime({value,onChange}){const times=[];for(let h=6;h<22;h++)for(const m of ['00','30'])times.push(`${String(h).padStart(2,'0')}:${m}`);return <div className="select-icon"><Clock3/><Select value={value} onChange={onChange}>{times.map(t=><option key={t}>{t}</option>)}</Select></div>}
 function DetailDrawer({title,sub,close,children,actions}){return <><div className="drawer-overlay" onClick={close}/><aside className="detail-drawer"><div className="drawer-head"><div><span>DETALJNI PREGLED</span><h2>{title}</h2><p>{sub}</p></div><button className="icon-btn" onClick={close}><X/></button></div><div className="drawer-body">{children}</div>{actions&&<div className="drawer-actions">{actions}</div>}</aside></>}
 function InfoGrid({items}){return <div className="info-grid">{items.map(([l,v])=><div key={l}><span>{l}</span><strong>{v||'—'}</strong></div>)}</div>}
@@ -66,7 +66,7 @@ export function JobsModule(){
  const del=x=>{setItems(a=>a.filter(i=>i.id!==x.id));setModal(null)};
  const exportList=()=>exportToPDF('Poslovi',`Pregled poslova — ${filtered.length} od ${items.length} zapisa`,['Broj','Klijent','Usluga','Termin','Radnik','Prioritet','Status'],filtered.map(x=>[x.no,x.client,x.service,`${x.date} ${x.time}`,x.worker,x.priority,x.status]));
  return <><Header eyebrow="OPERATIVA NA TERENU" title="Poslovi" description="Od novog upita do završene intervencije." button="Novi posao" onAdd={()=>setModal({type:'form',data:{status:'Novi',priority:'Standardno',date:'25.03.2025.',time:'08:00'}})}/><div className="module-metrics"><Metric icon={BriefcaseBusiness} label="Aktivni poslovi" value={items.length} sub="4 zakazana danas"/><Metric icon={Clock3} label="U toku" value="1" sub="Radnik je na terenu" tone="orange"/><Metric icon={CheckCircle2} label="Završeno ovaj mjesec" value="38" sub="Prosjek 1,7 dnevno" tone="green"/></div><section className="card"><Toolbar search={search} setSearch={setSearch} placeholder="Broj, klijent, usluga ili radnik..." statusOptions={['Svi statusi','Novi','Zakazano','U toku','Završeno']} statusValue={status} setStatusValue={setStatus} onExport={exportList}/><div className="table-wrap"><table><thead><tr><th>Broj</th><th>Klijent i usluga</th><th>Termin</th><th>Radnik</th><th>Prioritet</th><th>Status</th><th>Akcije</th></tr></thead><tbody>{filtered.map(x=><tr key={x.id} onClick={()=>setSelected(x)} className="clickable-row"><td className="mono">{x.no}</td><td><strong>{x.client}</strong><small className="table-sub">{x.service}</small></td><td>{x.date}<small className="table-sub">{x.time} · {x.city}</small></td><td>{x.worker}</td><td><span className={`priority ${x.priority.toLowerCase()}`}>{x.priority}</span></td><td><Badge>{x.status}</Badge></td><td><Actions onView={()=>setSelected(x)} onEdit={()=>setModal({type:'form',data:x})} onDelete={()=>setModal({type:'delete',data:x})}/></td></tr>)}</tbody></table>{!filtered.length&&<Empty/>}</div></section>{modal?.type==='form'&&<JobForm data={modal.data} close={()=>setModal(null)} save={save}/>} {modal?.type==='delete'&&<ConfirmDelete name={`${modal.data.no} · ${modal.data.client}`} onClose={()=>setModal(null)} onConfirm={()=>del(modal.data)}/>} {selected&&<DetailDrawer title={selected.no} sub={`${selected.client} · ${selected.service}`} close={()=>setSelected(null)} actions={<><button className="secondary" onClick={()=>exportToPDF(`Posao ${selected.no}`,`${selected.client} · ${selected.service}`,['Podatak','Vrijednost'],[['Klijent',selected.client],['Usluga',selected.service],['Datum',selected.date],['Vrijeme',selected.time],['Radnik',selected.worker],['Lokacija',selected.city],['Prioritet',selected.priority],['Status',selected.status],['Vrijednost',selected.amount]])}><Download/> PDF</button><button className="secondary" onClick={()=>setModal({type:'form',data:selected})}><Edit3/> Uredi</button><button className="primary"><CheckCircle2/> Završi posao</button></>}><div className="job-status-hero"><Badge>{selected.status}</Badge><span className={`priority ${selected.priority.toLowerCase()}`}>{selected.priority}</span></div><InfoGrid items={[["Klijent",selected.client],["Usluga",selected.service],["Datum",selected.date],["Vrijeme",selected.time],["Radnik",selected.worker],["Lokacija",selected.city],["Procijenjena vrijednost",selected.amount]]}/><div className="drawer-section"><h4>Tok intervencije</h4><div className="process-list"><div className="done"><Check/> Upit zaprimljen <span>24.03. · 09:15</span></div><div className="done"><Check/> Termin potvrđen <span>24.03. · 11:30</span></div><div className="current"><Clock3/> Intervencija {selected.status==='U toku'?'u toku':'zakazana'}</div></div></div></DetailDrawer>}</>}
-function JobForm({data,close,save}){const {clients}=useData();const [f,setF]=useState({...data});const s=(k,v)=>setF(x=>({...x,[k]:v}));return <ModalShell title={data.id?'Uredi posao':'Novi posao'} sub="Podaci o intervenciji, terminu i izvršiocu." close={close} wide><form onSubmit={e=>{e.preventDefault();save(f)}}><div className="form-grid"><Field label="Klijent"><Select value={f.client} onChange={v=>s('client',v)}><option value="">Odaberite klijenta</option>{clients.map(c=><option key={c.id}>{c.name}</option>)}</Select></Field><Field label="Vrsta usluge"><Input value={f.service} onChange={v=>s('service',v)} placeholder="npr. Servis bojlera" required/></Field><Field label="Datum"><EUDate value={f.date} onChange={v=>s('date',v)}/></Field><Field label="Vrijeme"><EUTime value={f.time} onChange={v=>s('time',v)}/></Field><Field label="Dodijeljeni radnik"><Select value={f.worker} onChange={v=>s('worker',v)}><option value="">Odaberite radnika</option><option>Marko Ilić</option><option>Ivan Kovač</option><option>Petar Jurić</option></Select></Field><Field label="Lokacija"><Input value={f.city} onChange={v=>s('city',v)} placeholder="Grad / naselje"/></Field><Field label="Prioritet"><Select value={f.priority} onChange={v=>s('priority',v)}><option>Standardno</option><option>Visoko</option><option>Hitno</option></Select></Field><Field label="Status"><Select value={f.status} onChange={v=>s('status',v)}><option>Novi</option><option>Zakazano</option><option>U toku</option><option>Završeno</option></Select></Field><Field label="Opis intervencije" full><textarea placeholder="Detaljan opis zahtjeva i napomene za radnika..."/></Field></div><ModalActions close={close}><button className="primary"><Check/> Sačuvaj posao</button></ModalActions></form></ModalShell>}
+function JobForm({data,close,save}){const {clients}=useData();const [f,setF]=useState({...data}),[error,setError]=useState('');const s=(k,v)=>{setF(x=>({...x,[k]:v}));setError('')};const submit=e=>{e.preventDefault();const d=parseEUFull(f.date);const chosen=new Date(d.getFullYear(),d.getMonth(),d.getDate(),Math.floor(timeToMin(f.time)/60),timeToMin(f.time)%60);if(chosen<new Date()){setError('Nije moguće zakazati termin u prošlosti.');return}if(!f.client||!f.service||!f.worker){setError('Klijent, vrsta usluge i radnik su obavezni.');return}const ok=save(f);if(ok===false)setError('Termin nije sačuvan. Provjerite zauzetost radnika i odabrani datum.')};return <ModalShell title={data.id?'Uredi posao':'Novi posao'} sub="Podaci o intervenciji, terminu i izvršiocu." close={close} wide><form onSubmit={submit}><div className="form-grid"><Field label="Klijent"><Select value={f.client} onChange={v=>s('client',v)}><option value="">Odaberite klijenta</option>{clients.map(c=><option key={c.id}>{c.name}</option>)}</Select></Field><Field label="Vrsta usluge"><Input value={f.service} onChange={v=>s('service',v)} placeholder="npr. Servis bojlera" required/></Field><Field label="Datum"><EUDate value={f.date} onChange={v=>s('date',v)} minDate={new Date()}/></Field><Field label="Vrijeme"><EUTime value={f.time} onChange={v=>s('time',v)}/></Field><Field label="Dodijeljeni radnik"><Select value={f.worker} onChange={v=>s('worker',v)}><option value="">Odaberite radnika</option><option>Marko Ilić</option><option>Ivan Kovač</option><option>Petar Jurić</option></Select></Field><Field label="Lokacija"><Input value={f.city} onChange={v=>s('city',v)} placeholder="Grad / naselje"/></Field><Field label="Prioritet"><Select value={f.priority} onChange={v=>s('priority',v)}><option>Standardno</option><option>Visoko</option><option>Hitno</option></Select></Field><Field label="Status"><Select value={f.status} onChange={v=>s('status',v)}><option>Novi</option><option>Zakazano</option><option>U toku</option><option>Završeno</option></Select></Field><Field label="Opis intervencije" full><textarea value={f.description||''} onChange={e=>s('description',e.target.value)} placeholder="Detaljan opis zahtjeva i napomene za radnika..."/></Field>{error&&<p className="otp-error full"><AlertTriangle/> {error}</p>}</div><ModalActions close={close}><button className="primary"><Check/> Sačuvaj posao</button></ModalActions></form></ModalShell>}
 
 function DocumentModule({kind}){
  const isOffer=kind==='Ponude';
@@ -105,7 +105,7 @@ function MaintenanceForm({data,close,save}){const {clients}=useData();const [f,s
 const DAY_START=7,DAY_END=19,SLOT_PX=60,HEAD_PX=42;
 const DAY_SHORT=['PON','UTO','SRI','ČET','PET','SUB','NED'];
 const MONTH_NAMES=['januar','februar','mart','april','maj','juni','juli','august','septembar','oktobar','novembar','decembar'];
-const SCHEDULE_TODAY=new Date(2025,2,25);
+const SCHEDULE_TODAY=(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())})();
 const ABSENCES=[{worker:'Petar Jurić',date:'28.03.2025.',reason:'Godišnji odmor'}];
 const WORKER_NAMES=['Marko Ilić','Ivan Kovač','Petar Jurić'];
 function pad2(n){return String(n).padStart(2,'0');}
@@ -138,12 +138,22 @@ export function ScheduleModule(){
  const hours=Array.from({length:DAY_END-DAY_START},(_,i)=>`${pad2(DAY_START+i)}:00`);
 
  const checkOverlap=(job,excludeId)=>jobs.find(x=>x.id!==excludeId&&x.worker===job.worker&&x.date===job.date&&Math.abs(timeToMin(x.time)-timeToMin(job.time))<90);
+ const isPastSlot=(date,time='00:00')=>{const d=parseEUFull(date);const chosen=new Date(d.getFullYear(),d.getMonth(),d.getDate(),Math.floor(timeToMin(time)/60),timeToMin(time)%60);return chosen<new Date()};
+ const openNewSlot=(day,time='08:00')=>{
+  const date=formatEUFull(day);
+  if(isPastSlot(date,time)){flash('Nije moguće zakazati termin u prošlosti.',true);return;}
+  setModal({type:'form',data:{status:'Zakazano',priority:'Standardno',date,time,worker:workerFilter!=='Svi radnici'?workerFilter:''}});
+ };
 
  const saveJob=f=>{
+  if(isPastSlot(f.date,f.time)){flash('Termin mora biti u budućnosti. Odaberite današnji kasniji termin ili naredni datum.',true);return false;}
+  if(!f.client||!f.service||!f.worker){flash('Odaberite klijenta i radnika te unesite vrstu usluge.',true);return false;}
   const overlap=checkOverlap(f,f.id);
+  if(overlap){flash(`${f.worker} već ima termin ${overlap.time} (${overlap.client}). Odaberite drugi termin.`,true);return false;}
   setJobs(a=>f.id?a.map(x=>x.id===f.id?f:x):[...a,{...f,id:Date.now(),no:`P-${1054+a.length}`}]);
   setModal(null);
-  flash(overlap?`Upozorenje: ${f.worker} već ima termin blizu ${f.time} na ${f.date}.`:`Termin za ${f.client||'klijenta'} je sačuvan.`,!!overlap);
+  flash(`Termin za ${f.client||'klijenta'} je sačuvan.`);
+  return true;
  };
  const deleteJob=job=>{setJobs(a=>a.filter(x=>x.id!==job.id));setModal(null);setSelected(null);flash('Termin je obrisan.');};
  const reassignWorker=(job,worker)=>{
@@ -162,14 +172,16 @@ export function ScheduleModule(){
   const rect=e.currentTarget.getBoundingClientRect();
   const newTime=yToTime(e.clientY-rect.top);
   const updated={...job,date:formatEUFull(day),time:newTime};
+  if(isPastSlot(updated.date,updated.time)){flash('Termin nije moguće premjestiti u prošlost.',true);return;}
   const overlap=checkOverlap(updated,job.id);
+  if(overlap){flash(`${job.worker} već ima termin ${overlap.time} (${overlap.client}). Premještanje nije izvršeno.`,true);return;}
   setJobs(a=>a.map(x=>x.id===id?updated:x));
-  flash(overlap?`Upozorenje: ${job.worker} već ima termin blizu ${newTime} na ${updated.date}.`:`Termin premješten na ${updated.date} u ${newTime}.`,!!overlap);
+  flash(`Termin premješten na ${updated.date} u ${newTime}.`);
  };
- const dayDoubleClick=(e,day)=>{
+ const dayClick=(e,day)=>{
+  if(e.target.closest('.schedule-job'))return;
   const rect=e.currentTarget.getBoundingClientRect();
-  const time=yToTime(e.clientY-rect.top);
-  setModal({type:'form',data:{status:'Zakazano',priority:'Standardno',date:formatEUFull(day),time,worker:workerFilter!=='Svi radnici'?workerFilter:''}});
+  openNewSlot(day,yToTime(e.clientY-rect.top));
  };
 
  const monthStart=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1);
@@ -181,7 +193,7 @@ export function ScheduleModule(){
 
  const exportWeek=()=>exportToPDF('Raspored',`Sedmica: ${weekRangeLabel(weekStart)}`,['Datum','Vrijeme','Klijent','Usluga','Radnik','Status'],weekDays.flatMap(d=>filteredJobs.filter(j=>j.date===formatEUFull(d)).map(j=>[j.date,j.time,j.client,j.service,j.worker,j.status])));
 
- return <><Header eyebrow="PLANIRANJE EKIPE" title="Raspored" description="Sedmični i mjesečni pregled termina i dostupnosti radnika." button="Novi termin" onAdd={()=>setModal({type:'form',data:{status:'Zakazano',priority:'Standardno',date:formatEUFull(weekStart),time:'08:00'}})}/>
+ return <><Header eyebrow="PLANIRANJE EKIPE" title="Raspored" description="Sedmični i mjesečni pregled termina i dostupnosti radnika. Kliknite na slobodan termin ili datum za dodavanje zadatka." button="Novi termin" onAdd={()=>openNewSlot(SCHEDULE_TODAY,`${pad2(Math.max(DAY_START,new Date().getHours()+1))}:00`)}/>
  <div className="report-filter schedule-filter-row">
   <div><label>Radnik</label><div className="select-icon report-select"><UserRound/><Select value={workerFilter} onChange={setWorkerFilter}>{['Svi radnici',...WORKER_NAMES].map(w=><option key={w}>{w}</option>)}</Select></div></div>
   <div><label>Status</label><div className="select-icon report-select"><Filter/><Select value={statusFilter} onChange={setStatusFilter}>{['Svi statusi','Novi','Zakazano','U toku','Završeno'].map(s=><option key={s}>{s}</option>)}</Select></div></div>
@@ -208,7 +220,7 @@ export function ScheduleModule(){
     const absence=ABSENCES.find(a=>sameDate(parseEUFull(a.date),d));
     return <div key={key} className={`pro-day ${isToday?'today':''} ${isWeekend?'nonworking':''} ${dragOverKey===key?'drag-over':''}`}
      onDragOver={e=>{e.preventDefault();setDragOverKey(key);}} onDragLeave={()=>setDragOverKey(k=>k===key?'':k)} onDrop={e=>handleDrop(e,d)}
-     onDoubleClick={e=>dayDoubleClick(e,d)}>
+     onClick={e=>dayClick(e,d)}>
      <strong>{DAY_SHORT[i]} {d.getDate()}</strong>
      {isWeekend&&<span className="nonworking-flag">Neradni dan</span>}
      {absence&&<span className="absence-flag">{absence.worker.split(' ')[0]} odsutan — {absence.reason}</span>}
@@ -230,7 +242,8 @@ export function ScheduleModule(){
     const otherMonth=d.getMonth()!==monthCursor.getMonth();
     const isToday=sameDate(d,SCHEDULE_TODAY);
     const absence=ABSENCES.find(a=>sameDate(parseEUFull(a.date),d));
-    return <button type="button" key={i} className={`month-cell ${otherMonth?'otherMonth':''} ${isToday?'today':''}`} onClick={()=>{setWeekStart(mondayOf(d));setView('week');}}>
+    const past=new Date(d.getFullYear(),d.getMonth(),d.getDate())<SCHEDULE_TODAY;
+    return <button type="button" key={i} disabled={past} title={past?'Nije moguće zakazati termin u prošlosti':'Kliknite za novi termin'} className={`month-cell ${otherMonth?'otherMonth':''} ${isToday?'today':''} ${past?'past-day':''}`} onClick={()=>openNewSlot(d,'08:00')}>
      <strong>{d.getDate()}</strong>
      {absence&&<span className="m-absence">{absence.worker.split(' ')[0]} odsutan</span>}
      {dayJobs.length>0&&<div className="m-dots">{dayJobs.slice(0,4).map(j=><span key={j.id} className={`m-dot ${toneOfWorker(j.worker)}`}/>)}</div>}
