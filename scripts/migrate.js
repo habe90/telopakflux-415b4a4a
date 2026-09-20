@@ -135,9 +135,10 @@ async function run() {
   }
   console.log('Tabele su spremne.');
 
+  const allowDemoSeed = process.env.SEED_DEMO_DATA === 'true';
   const { rows } = await pool.query('SELECT COUNT(*)::int AS c FROM clients');
-  if (rows[0].c === 0) {
-    console.log('Baza je prazna — ubacujem početne demo podatke...');
+  if (allowDemoSeed && rows[0].c === 0) {
+    console.log('SEED_DEMO_DATA je uključen — ubacujem demo podatke...');
     for (const c of seedClients) {
       await pool.query(
         `INSERT INTO clients (name,type,contact,email,phone,city,address,jobs,value,status,note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
@@ -176,7 +177,7 @@ async function run() {
     }
     console.log('Demo podaci su ubačeni.');
   } else {
-    console.log('Baza već sadrži podatke — preskačem seed.');
+    console.log(allowDemoSeed ? 'Baza već sadrži podatke — preskačem demo seed.' : 'Produkcijski režim — demo podaci nisu ubačeni.');
   }
 
   console.log('Migracije završene.');
