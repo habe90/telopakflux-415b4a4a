@@ -232,7 +232,56 @@ app.get('/api/owner/companies', requireAuth, requirePlatformOwner, async (req,re
 app.put('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
   try{const {status,plan,monthly_price}=req.body||{};const r=await pool.query(`UPDATE companies SET status=COALESCE($1,status),plan=COALESCE($2,plan),monthly_price=COALESCE($3,monthly_price) WHERE id=$4 RETURNING *`,[status||null,plan||null,monthly_price===undefined?null:Number(monthly_price),req.params.id]);await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.update','company',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify({status,plan,monthly_price}),req.ip]);res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:'Izmjena firme nije uspjela.'})}
 });
+app.post('/api/owner/companies', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    const {name,industry,plan,monthly_price,status}=req.body||{};
+    if(!name||!String(name).trim()) return res.status(400).json({error:'Naziv firme je obavezan.'});
+    const r=await pool.query(`INSERT INTO companies(name,industry,plan,monthly_price,status) VALUES($1,$2,$3,$4,$5) RETURNING *`,[String(name).trim(),industry||'',plan||'Trial',Number(monthly_price)||0,status||'Aktivna']);
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.create','company',$2,$3,$4)`,[req.user.id,String(r.rows[0].id),JSON.stringify({name}),req.ip]);
+    res.status(201).json(r.rows[0]);
+  }catch(e){console.error(e);res.status(500).json({error:'Kreiranje firme nije uspjelo.'})}
+});
+app.get('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    const company=await pool.query('SELECT * FROM companies WHERE id=$1',[req.params.id]);
+    if(!company.rows[0]) return res.status(404).json({error:'Firma nije pronađena.'});
+    const [users,jobs,invoices,clients,offers]=await Promise.all([
+      pool.query(`SELECT id,name,email,role,status,email_verified,created_at FROM app_users WHERE company_id=$1 ORDER BY created_at DESC`,[req.params.id]),
+      pool.query(`SELECT COUNT(*)::int c FROM jobs WHERE company_id=$1`,[req.params.id]),
+      pool.query(`SELECT COUNT(*)::int c FROM invoices WHERE company_id=$1`,[req.params.id]),
+      pool.query(`SELECT COUNT(*)::int c FROM clients WHERE company_id=$1`,[req.params.id]),
+      pool.query(`SELECT COUNT(*)::int c FROM offers WHERE company_id=$1`,[req.params.id])
+    ]);
+    res.json({company:company.rows[0],users:users.rows,stats:{jobs:jobs.rows[0].c,invoices:invoices.rows[0].c,clients:clients.rows[0].c,offers:offers.rows[0].c}});
+  }catch(e){console.error(e);res.status(500).json({error:'Nije moguće učitati detalje firme.'})}
+});
+app.delete('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    const r=await pool.query('DELETE FROM companies WHERE id=$1 RETURNING id',[req.params.id]);
+    if(!r.rows[0]) return res.status(404).json({error:'Firma nije pronađena.'});
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.delete','company',$2,'{}',$3)`,[req.user.id,String(req.params.id),req.ip]);
+    res.json({ok:true});
+  }catch(e){console.error(e);res.status(500).json({error:'Brisanje firme nije uspjelo.'})}
+});
 app.get('/api/owner/users', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT u.id,u.name,u.email,u.role,u.status,u.email_verified,u.created_at,c.name company FROM app_users u LEFT JOIN companies c ON c.id=u.company_id ORDER BY u.created_at DESC LIMIT 250`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati korisnike.'})}});
+app.put('/api/owner/users/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    const {role,status}=req.body||{};
+    const r=await pool.query(`UPDATE app_users SET role=COALESCE($1,role),status=COALESCE($2,status),updated_at=now() WHERE id=$3 RETURNING id,name,email,role,status`,[role||null,status||null,req.params.id]);
+    if(!r.rows[0]) return res.status(404).json({error:'Korisnik nije pronađen.'});
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'user.update','user',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify({role,status}),req.ip]);
+    res.json(r.rows[0]);
+  }catch(e){console.error(e);res.status(500).json({error:'Izmjena korisnika nije uspjela.'})}
+});
+app.delete('/api/owner/users/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    if(String(req.user.id)===String(req.params.id)) return res.status(400).json({error:'Ne možete obrisati sopstveni nalog.'});
+    const r=await pool.query('DELETE FROM app_users WHERE id=$1 RETURNING id',[req.params.id]);
+    if(!r.rows[0]) return res.status(404).json({error:'Korisnik nije pronađen.'});
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'user.delete','user',$2,'{}',$3)`,[req.user.id,String(req.params.id),req.ip]);
+    res.json({ok:true});
+  }catch(e){console.error(e);res.status(500).json({error:'Brisanje korisnika nije uspjelo.'})}
+});
 app.get('/api/owner/audit', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT a.*,u.email actor FROM platform_audit_log a LEFT JOIN app_users u ON u.id=a.actor_user_id ORDER BY a.created_at DESC LIMIT 100`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati audit zapis.'})}});
 
 app.use('/api/clients', requireAuth, crud('clients', { type: 'Fizičko lice', status: 'Aktivan', address: '', note: '', jobs: 0, value: '0,00 €' }));
