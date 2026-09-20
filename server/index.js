@@ -94,6 +94,20 @@ function crud(table, defaults = {}) {
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', name: 'TeloPak Flux API' }));
 
+// Dijagnostika SMTP konekcije — ne otkriva lozinku, samo status konekcije. Korisno za
+// provjeru da li su env varijable stvarno stigle do kontejnera i da li Zoho prihvata auth.
+app.get('/api/debug/smtp', async (req, res) => {
+  const configured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  if (!configured) return res.json({ configured: false, note: 'SMTP_HOST/SMTP_USER/SMTP_PASS nisu postavljeni u env-u ovog kontejnera.' });
+  try {
+    const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: Number(process.env.SMTP_PORT) === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
+    await transporter.verify();
+    res.json({ configured: true, verified: true, host: process.env.SMTP_HOST, port: process.env.SMTP_PORT, user: process.env.SMTP_USER });
+  } catch (err) {
+    res.json({ configured: true, verified: false, host: process.env.SMTP_HOST, port: process.env.SMTP_PORT, user: process.env.SMTP_USER, error: err?.message || String(err) });
+  }
+});
+
 // ---------- Sigurna autentifikacija ----------
 app.post('/api/auth/register', strictLimiter, async (req, res) => {
   try {
@@ -111,8 +125,8 @@ app.post('/api/auth/register', strictLimiter, async (req, res) => {
       const code = generateCode();
       await client.query(`INSERT INTO auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,'verify_email',$2,now()+interval '15 minutes')`, [u.rows[0].id, hashToken(code)]);
       await client.query('COMMIT');
-      await sendSecurityEmail({ to: email, subject: 'Potvrdite TeloPak Flux nalog', message: `Vaš sigurnosni kod je: ${code}\nKod važi 15 minuta. Ako niste vi pokrenuli registraciju, zanemarite poruku.` });
-      res.status(201).json({ ok: true, email });
+      const mail = await sendSecurityEmail({ to: email, subject: 'Potvrdite TeloPak Flux nalog', message: `Vaš sigurnosni kod je: ${code}\nKod važi 15 minuta. Ako niste vi pokrenuli registraciju, zanemarite poruku.` });
+      res.status(201).json({ ok: true, email, delivered: mail.delivered, deliveryNote: mail.delivered ? null : mail.reason });
     } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
   } catch (e) { console.error(e); res.status(500).json({ error: 'Registracija trenutno nije dostupna.' }); }
 });
@@ -148,8 +162,8 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     const code = generateCode();
     await pool.query(`UPDATE auth_tokens SET used_at=now() WHERE user_id=$1 AND purpose='login_otp' AND used_at IS NULL`, [user.id]);
     await pool.query(`INSERT INTO auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,'login_otp',$2,now()+interval '10 minutes')`, [user.id, hashToken(code)]);
-    await sendSecurityEmail({ to: user.email, subject: 'TeloPak Flux sigurnosni kod', message: `Vaš kod za prijavu je: ${code}\nKod važi 10 minuta. Nikome ga ne prosljeđujte.` });
-    res.json({ requiresOtp: true, challenge: hashToken(`${user.id}:${Date.now()}`).slice(0,24), email: user.email });
+    const mail = await sendSecurityEmail({ to: user.email, subject: 'TeloPak Flux sigurnosni kod', message: `Vaš kod za prijavu je: ${code}\nKod važi 10 minuta. Nikome ga ne prosljeđujte.` });
+    res.json({ requiresOtp: true, challenge: hashToken(`${user.id}:${Date.now()}`).slice(0,24), email: user.email, delivered: mail.delivered, deliveryNote: mail.delivered ? null : mail.reason });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Prijava trenutno nije dostupna.' }); }
 });
 app.post('/api/auth/login/verify', strictLimiter, async (req, res) => {
