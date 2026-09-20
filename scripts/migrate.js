@@ -88,7 +88,31 @@ async function run() {
     expires_at timestamptz NOT NULL, used_at timestamptz, created_at timestamptz DEFAULT now()
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash)`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'Aktivna'`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'Trial'`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS trial_ends_at timestamptz DEFAULT (now()+interval '14 days')`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS monthly_price numeric(10,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
+  await pool.query(`ALTER TABLE stock ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
+  await pool.query(`ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS platform_audit_log (
+    id bigserial PRIMARY KEY, actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL,
+    action text NOT NULL, target_type text, target_id text, metadata jsonb DEFAULT '{}'::jsonb,
+    ip_address text, created_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_tokens_lookup ON auth_tokens(user_id,purpose,token_hash)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_company ON clients(company_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_offers_company ON offers(company_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_invoices_company ON invoices(company_id)`);
+  if (process.env.PLATFORM_OWNER_EMAIL) {
+    await pool.query(`UPDATE app_users SET role='Platform Owner' WHERE lower(email)=lower($1)`, [process.env.PLATFORM_OWNER_EMAIL]);
+    console.log('Platform Owner uloga je sinhronizovana.');
+  }
   console.log('Tabele su spremne.');
 
   const { rows } = await pool.query('SELECT COUNT(*)::int AS c FROM clients');
