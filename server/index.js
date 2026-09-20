@@ -216,8 +216,44 @@ app.post('/api/auth/reset-password', strictLimiter, async (req, res) => {
 });
 app.get('/api/auth/me', requireAuth, (req, res) => res.json({ user: publicUser(req.user) }));
 app.post('/api/auth/logout', requireAuth, async (req, res) => { await pool.query('UPDATE auth_sessions SET revoked_at=now() WHERE id=$1', [req.sessionId]); clearSessionCookie(res); res.json({ ok: true }); });
-app.get('/api/auth/sessions', requireAuth, async (req, res) => { const r=await pool.query('SELECT id,user_agent,ip_address,created_at,expires_at FROM auth_sessions WHERE user_id=$1 AND revoked_at IS NULL AND expires_at>now() ORDER BY created_at DESC',[req.user.id]);res.json(r.rows); });
-app.delete('/api/auth/sessions/:id', requireAuth, async (req,res)=>{await pool.query('UPDATE auth_sessions SET revoked_at=now() WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);res.json({ok:true});});
+app.get('/api/auth/sessions', requireAuth, async (req, res) => { const r=await pool.query('SELECT id,user_agent,ip_address,created_at,expires_at FROM auth_sessions WHERE user_id=$1 AND revoked_at IS NULL AND expires_at>now() ORDER BY created_at DESC',[req.user.id]);res.json(r.rows.map(s=>({...s,current:s.id===req.sessionId}))); });
+app.delete('/api/auth/sessions/:id', requireAuth, async (req,res)=>{await pool.query('UPDATE auth_sessions SET revoked_at=now() WHERE id=$1 AND user_id=$2 AND id<>$3',[req.params.id,req.user.id,req.sessionId]);res.json({ok:true});});
+app.post('/api/auth/sessions/revoke-others', requireAuth, async (req,res)=>{await pool.query('UPDATE auth_sessions SET revoked_at=now() WHERE user_id=$1 AND id<>$2 AND revoked_at IS NULL',[req.user.id,req.sessionId]);res.json({ok:true});});
+
+app.put('/api/auth/profile', requireAuth, async (req,res)=>{
+ try{
+  const sets=[],vals=[];let i=1;
+  if(req.body.name!==undefined){
+   if(!String(req.body.name).trim()) return res.status(400).json({error:'Ime i prezime su obavezni.'});
+   sets.push(`name=${i++}`);vals.push(String(req.body.name).trim().slice(0,120));
+  }
+  if(req.body.phone!==undefined){sets.push(`phone=${i++}`);vals.push(String(req.body.phone||'').slice(0,40));}
+  if(req.body.avatar_data!==undefined){
+   const v=req.body.avatar_data;
+   const validAvatar=v==null||v===''||(/^data:image\/(png|jpeg|webp);base64,/.test(v)&&v.length<1400000);
+   if(!validAvatar) return res.status(400).json({error:'Slika nije validna ili je prevelika (maksimalno 1 MB).'});
+   sets.push(`avatar_data=${i++}`);vals.push(v||null);
+  }
+  if(!sets.length) return res.status(400).json({error:'Nema izmjena za sačuvati.'});
+  sets.push('updated_at=now()');
+  vals.push(req.user.id);
+  const r=await pool.query(`UPDATE app_users SET ${sets.join(',')} WHERE id=${i} RETURNING *`,vals);
+  res.json({user:publicUser(r.rows[0])});
+ }catch(e){console.error(e);res.status(500).json({error:'Ažuriranje profila nije uspjelo.'})}
+});
+app.put('/api/auth/password', requireAuth, strictLimiter, async (req,res)=>{
+ try{
+  const {currentPassword,newPassword}=req.body||{};
+  if(!currentPassword||!newPassword) return res.status(400).json({error:'Popunite sva polja.'});
+  if(!passwordValid(newPassword)) return res.status(400).json({error:'Nova lozinka mora imati najmanje 12 znakova, veliko i malo slovo, broj i specijalni znak.'});
+  const u=await pool.query('SELECT * FROM app_users WHERE id=$1',[req.user.id]);
+  const valid=await verifyPassword(currentPassword,u.rows[0].password_hash);
+  if(!valid) return res.status(401).json({error:'Trenutna lozinka nije ispravna.'});
+  await pool.query('UPDATE app_users SET password_hash=$1,updated_at=now() WHERE id=$2',[await hashPassword(newPassword),req.user.id]);
+  await pool.query('UPDATE auth_sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL AND id<>$2',[req.user.id,req.sessionId]);
+  res.json({ok:true});
+ }catch(e){console.error(e);res.status(500).json({error:'Promjena lozinke nije uspjela.'})}
+});
 
 // ---------- Platform Owner konzola ----------
 app.get('/api/owner/overview', requireAuth, requirePlatformOwner, async (req,res)=>{
