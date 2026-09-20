@@ -125,8 +125,13 @@ async function run() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_offers_company ON offers(company_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_invoices_company ON invoices(company_id)`);
   if (process.env.PLATFORM_OWNER_EMAIL) {
-    await pool.query(`UPDATE app_users SET role='Platform Owner' WHERE lower(email)=lower($1)`, [process.env.PLATFORM_OWNER_EMAIL]);
-    console.log('Platform Owner uloga je sinhronizovana.');
+    const ownerExists = await pool.query(`SELECT id FROM app_users WHERE role='Platform Owner' LIMIT 1`);
+    if (!ownerExists.rows[0]) {
+      await pool.query(`UPDATE app_users SET role='Platform Owner', updated_at=now() WHERE lower(email)=lower($1)`, [process.env.PLATFORM_OWNER_EMAIL]);
+      console.log('Početni Platform Owner je postavljen.');
+    } else {
+      console.log('Platform Owner već postoji — ručno dodijeljene uloge ostaju nepromijenjene.');
+    }
   }
   console.log('Tabele su spremne.');
 
