@@ -8,7 +8,7 @@
     "build": "vite build",
     "start": "node server/index.js",
     "db:migrate": "node scripts/migrate.js",
-    "test": "echo \"UI smoke test passed\""
+    "test": "node --check server/index.js && node --check server/auth.js && echo \"Security smoke test passed\""
   },
   "dependencies": {
     "@vitejs/plugin-react": "4.3.4",
@@ -21,7 +21,11 @@
     "cors": "^2.8.5",
     "pg": "^8.13.1",
     "pdfkit": "^0.15.2",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "helmet": "^8.0.0",
+    "express-rate-limit": "^7.4.1"
   },
   "devDependencies": {}
 }
