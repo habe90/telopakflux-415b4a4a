@@ -379,6 +379,16 @@
 @media(max-width:700px){.owner-detail-stats{grid-template-columns:repeat(2,1fr)}.owner-form-row,.owner-form-row.three{grid-template-columns:1fr}.owner-detail-users>div{grid-template-columns:1fr}.owner-detail-users select{width:100%}}
 @media(max-width:600px){.owner-metrics{grid-template-columns:1fr}.owner-head{flex-direction:column;gap:12px}.owner-head h1{font-size:26px}.owner-search{width:100%}.owner-table td{font-size:12px}}
 
+/* Interaktivni raspored */
+.pro-day{cursor:crosshair}
+.pro-day:hover{background-color:#fbfdff}
+.pro-day.nonworking{cursor:not-allowed}
+.schedule-job{cursor:pointer}
+.month-cell:not(:disabled){cursor:pointer;transition:background .16s,border-color .16s,transform .16s}
+.month-cell:not(:disabled):hover{background:#edf5ff;border-color:#8db9ee;transform:translateY(-1px)}
+.month-cell.past-day,.month-cell:disabled{opacity:.42;cursor:not-allowed;background:#f5f6f8}
+.mini-calendar button.past-date,.mini-calendar button:disabled{opacity:.3;cursor:not-allowed;text-decoration:line-through;background:transparent;color:#8793a2}
+.schedule-pro:before{content:'Kliknite na slobodan termin za dodavanje zadatka · Povucite postojeći termin za premještanje';display:block;padding:9px 16px;background:#eef6ff;border-bottom:1px solid #dbeafa;color:#35618e;font-size:11.5px;font-weight:600}
 /* Owner details redesign */
 .owner-modal.wide{max-width:880px;border-radius:20px;overflow:hidden}
 .owner-modal-head{padding:22px 28px}.owner-modal-head h3{font-size:20px}.owner-modal-body{padding:0 28px 28px}
