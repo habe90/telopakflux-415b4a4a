@@ -6,17 +6,22 @@ import {
   AlertCircle, TrendingUp, WalletCards, Menu, X, Phone, Mail, SlidersHorizontal,
   ArrowRight, Zap, Droplets, Wind, Hammer, UserRound, Check, Circle, ChevronRight,
   LogOut, UserCog, ShieldCheck, Ban, Trash2, Send, RotateCcw, Info, Bot, Save, Edit3, Eye, Download,
-  Laptop, Smartphone, Globe, AlertTriangle, Building2, Archive
+  Laptop, Smartphone, Globe, AlertTriangle, Building2, Archive, Activity, Database, Server, CreditCard, ScrollText
 } from 'lucide-react';
 import { Login, Register, ForgotPassword, AcceptInvite, PasswordStrength } from './Auth';
 import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule, StockModule, MaintenanceModule, ReportsModule, SettingsModule, exportToPDF } from './Modules';
 import AIAssistant from './AIAssistant';
+import { OwnerOverview, OwnerCompanies, OwnerUsers, OwnerAudit } from './PlatformOwner';
 import { DataProvider, useData } from './store';
 
 const navItems = [
   ['Početna', LayoutDashboard], ['Klijenti', Users], ['Poslovi', BriefcaseBusiness],
   ['Raspored', CalendarDays], ['Ponude', FileText], ['Računi', ReceiptText],
   ['Materijal', Package], ['Održavanje', Wrench], ['AI pomoćnik', Bot], ['Izvještaji', BarChart3]
+];
+const ownerNavItems=[
+ ['Owner pregled',LayoutDashboard],['Firme',Building2],['Svi korisnici',Users],
+ ['Pretplate',CreditCard],['Sistem',Server],['Audit zapis',ScrollText]
 ];
 
 const jobs = [
@@ -452,8 +457,14 @@ function AppShell(){
  };
  const authSuccess=user=>{setProfile(p=>({...p,...user}));setAuthed(true);setAuthView('login')};
  const logout=async()=>{setNavPopup(null);try{await fetch('/api/auth/logout',{method:'POST',credentials:'include'})}catch{}setAuthed(false);setProfile({name:'',email:'',phone:'',avatar:null});setAuthView('login')};
+ const isOwner=profile?.isPlatformOwner||profile?.role==='Platform Owner';
  const go=p=>{setPage(p);setMobile(false)};
+ useEffect(()=>{if(authed&&isOwner&&!ownerNavItems.some(([n])=>n===page))setPage('Owner pregled')},[authed,isOwner]);
  const content=useMemo(()=>{
+  if(isOwner){
+   const ownerScreens={'Owner pregled':<OwnerOverview go={go}/>,'Firme':<OwnerCompanies/>,'Svi korisnici':<OwnerUsers/>,'Pretplate':<OwnerCompanies/>,'Sistem':<OwnerOverview go={go}/>,'Audit zapis':<OwnerAudit/>};
+   return ownerScreens[page]||ownerScreens['Owner pregled'];
+  }
   const screens={
    'Klijenti':<ClientsModule/>,
    'Poslovi':<JobsModule/>,
@@ -468,7 +479,7 @@ function AppShell(){
    'Korisnici':<UsersManagement onPreviewInvite={setInviteView}/>
   };
   return page==='Početna'?<Dashboard openNew={()=>setModal(true)} go={go} notify={notify} profile={profile}/>:screens[page];
- },[page]);
+ },[page,isOwner,profile]);
 
  if(inviteView){
   return <AcceptInvite invite={inviteView} goLogin={()=>{setInviteView(null);setAuthed(false);setAuthView('login');}}/>;
@@ -483,9 +494,9 @@ function AppShell(){
  }
 
  return <div className="app">
-  {mobile&&<div className="mobile-overlay" onClick={()=>setMobile(false)}/>}<aside className={mobile?'open':''}><Logo/><nav><span className="nav-label">GLAVNI MENI</span>{navItems.map(([name,Icon])=><button className={page===name?'active':''} onClick={()=>go(name)} key={name}><Icon/>{name}{name==='Poslovi'&&<em>6</em>}</button>)}</nav><div className="sidebar-bottom"><span className="nav-label">ADMINISTRACIJA</span><button className={page==='Korisnici'?'active':''} onClick={()=>go('Korisnici')}><UserCog/>Korisnici</button><button className={page==='Postavke'?'active':''} onClick={()=>go('Postavke')}><Settings/>Postavke</button><div className="help"><div><Zap/></div><strong>Treba vam pomoć?</strong><span>Naš tim je tu za vas.</span><button>Kontaktirajte podršku</button></div><div className="sidebar-user"><Avatar profile={profile} className="avatar"/><div><strong>{profile.name}</strong><span>Administrator</span></div><button className="icon-btn logout-btn" title="Odjava" onClick={logout}><LogOut/></button></div></div></aside>
-  <main><header><button className="menu-btn" onClick={()=>setMobile(true)}><Menu/></button><button className="global-search global-search-button" onClick={()=>setSearchOpen(true)}><Search/><span>Pretraži klijente, poslove, račune...</span><kbd>⌘ K</kbd></button><div className="header-actions">
-   <div className="header-pop-wrap"><button className={`quick ${navPopup==='quick'?'active':''}`} onClick={()=>setNavPopup(navPopup==='quick'?null:'quick')}><Plus/> Brzo dodaj <ChevronDown/></button>{navPopup==='quick'&&<QuickAddMenu close={()=>setNavPopup(null)} onSelect={quickSelect}/>}</div>
+  {mobile&&<div className="mobile-overlay" onClick={()=>setMobile(false)}/>}<aside className={`${mobile?'open ':''}${isOwner?'owner-sidebar':''}`}><Logo/><nav><span className="nav-label">{isOwner?'PLATFORMA':'GLAVNI MENI'}</span>{(isOwner?ownerNavItems:navItems).map(([name,Icon])=><button className={page===name?'active':''} onClick={()=>go(name)} key={name}><Icon/>{name}{!isOwner&&name==='Poslovi'&&<em>6</em>}</button>)}</nav><div className="sidebar-bottom">{!isOwner&&<><span className="nav-label">ADMINISTRACIJA</span><button className={page==='Korisnici'?'active':''} onClick={()=>go('Korisnici')}><UserCog/>Korisnici</button><button className={page==='Postavke'?'active':''} onClick={()=>go('Postavke')}><Settings/>Postavke</button><div className="help"><div><Zap/></div><strong>Treba vam pomoć?</strong><span>Naš tim je tu za vas.</span><button>Kontaktirajte podršku</button></div></>} {isOwner&&<div className="owner-sidebar-note"><ShieldCheck/><div><strong>Owner pristup</strong><span>Globalne ovlasti platforme</span></div></div>}<div className="sidebar-user"><Avatar profile={profile} className="avatar"/><div><strong>{profile.name}</strong><span>{isOwner?'Platform Owner':profile.role||'Administrator'}</span></div><button className="icon-btn logout-btn" title="Odjava" onClick={logout}><LogOut/></button></div></div></aside>
+  <main className={isOwner?'owner-main':''}><header><button className="menu-btn" onClick={()=>setMobile(true)}><Menu/></button><button className="global-search global-search-button" onClick={()=>!isOwner&&setSearchOpen(true)}><Search/><span>{isOwner?'Pretraži firme i korisnike...':'Pretraži klijente, poslove, račune...'}</span><kbd>⌘ K</kbd></button><div className="header-actions">
+   {!isOwner&&<div className="header-pop-wrap"><button className={`quick ${navPopup==='quick'?'active':''}`} onClick={()=>setNavPopup(navPopup==='quick'?null:'quick')}><Plus/> Brzo dodaj <ChevronDown/></button>{navPopup==='quick'&&<QuickAddMenu close={()=>setNavPopup(null)} onSelect={quickSelect}/>}</div>}
    <div className="header-pop-wrap"><button className={`bell ${navPopup==='notifications'?'active':''}`} onClick={()=>setNavPopup(navPopup==='notifications'?null:'notifications')}><Bell/>{notifications.some(n=>!n.read)&&<i></i>}</button>{navPopup==='notifications'&&<NotificationCenter items={notifications} setItems={setNotifications} close={()=>setNavPopup(null)} go={go}/>}</div>
    <div className="header-pop-wrap"><button className={`profile-trigger ${navPopup==='profile'?'active':''}`} onClick={()=>setNavPopup(navPopup==='profile'?null:'profile')}><Avatar profile={profile} className="avatar header-avatar"/><ChevronDown/></button>{navPopup==='profile'&&<ProfileMenu close={()=>setNavPopup(null)} go={go} onProfile={()=>setProfileModal(true)} onLogout={logout} profile={profile}/>}</div>
   </div></header>{!loading&&!backendOnline&&<div className="demo-mode-banner"><AlertTriangle/> Demo režim: nije moguće povezati se na bazu, pa se izmjene ne čuvaju trajno. Na produkcijskom serveru sve radi sa pravom bazom podataka.</div>}<div className="content">{content}</div></main>
