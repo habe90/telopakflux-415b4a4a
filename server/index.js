@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
 import nodemailer from 'nodemailer';
 import { pool } from './db.js';
-import { randomToken, hashToken, generateCode, normalizeEmail, hashPassword, verifyPassword, passwordValid, publicUser, createSession, clearSessionCookie, requireAuth, sendSecurityEmail } from './auth.js';
+import { randomToken, hashToken, generateCode, normalizeEmail, hashPassword, verifyPassword, passwordValid, publicUser, createSession, clearSessionCookie, requireAuth, requirePlatformOwner, sendSecurityEmail } from './auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +28,7 @@ function stripId(obj) {
   const copy = { ...obj };
   delete copy.id;
   delete copy.created_at;
+  delete copy.company_id;
   return copy;
 }
 
@@ -36,7 +37,7 @@ function crud(table, defaults = {}) {
 
   router.get('/', async (req, res) => {
     try {
-      const r = await pool.query(`SELECT * FROM ${table} ORDER BY id ASC`);
+      const r = await pool.query(`SELECT * FROM ${table} WHERE company_id=$1 ORDER BY id ASC`, [req.user.company_id]);
       res.json(r.rows);
     } catch (err) {
       console.error(err);
@@ -46,7 +47,7 @@ function crud(table, defaults = {}) {
 
   router.post('/', async (req, res) => {
     try {
-      const data = { ...defaults, ...stripId(req.body) };
+      const data = { ...defaults, ...stripId(req.body), company_id: req.user.company_id };
       const cols = Object.keys(data);
       const vals = Object.values(data);
       const placeholders = cols.map((_, i) => `$${i + 1}`).join(',');
@@ -68,8 +69,8 @@ function crud(table, defaults = {}) {
       if (!cols.length) return res.status(400).json({ error: 'Nema polja za izmjenu.' });
       const set = cols.map((c, i) => `${c}=$${i + 1}`).join(',');
       const r = await pool.query(
-        `UPDATE ${table} SET ${set} WHERE id=$${cols.length + 1} RETURNING *`,
-        [...cols.map(c => data[c]), req.params.id]
+        `UPDATE ${table} SET ${set} WHERE id=${cols.length + 1} AND company_id=${cols.length + 2} RETURNING *`,
+        [...cols.map(c => data[c]), req.params.id, req.user.company_id]
       );
       if (!r.rows[0]) return res.status(404).json({ error: 'Zapis nije pronađen.' });
       res.json(r.rows[0]);
@@ -81,7 +82,7 @@ function crud(table, defaults = {}) {
 
   router.delete('/:id', async (req, res) => {
     try {
-      await pool.query(`DELETE FROM ${table} WHERE id=$1`, [req.params.id]);
+      await pool.query(`DELETE FROM ${table} WHERE id=$1 AND company_id=$2`, [req.params.id, req.user.company_id]);
       res.json({ ok: true });
     } catch (err) {
       console.error(err);
@@ -214,6 +215,26 @@ app.post('/api/auth/logout', requireAuth, async (req, res) => { await pool.query
 app.get('/api/auth/sessions', requireAuth, async (req, res) => { const r=await pool.query('SELECT id,user_agent,ip_address,created_at,expires_at FROM auth_sessions WHERE user_id=$1 AND revoked_at IS NULL AND expires_at>now() ORDER BY created_at DESC',[req.user.id]);res.json(r.rows); });
 app.delete('/api/auth/sessions/:id', requireAuth, async (req,res)=>{await pool.query('UPDATE auth_sessions SET revoked_at=now() WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);res.json({ok:true});});
 
+// ---------- Platform Owner konzola ----------
+app.get('/api/owner/overview', requireAuth, requirePlatformOwner, async (req,res)=>{
+  try{
+    const [companies,users,sessions]=await Promise.all([
+      pool.query(`SELECT COUNT(*)::int total, COUNT(*) FILTER (WHERE status='Aktivna')::int active, COUNT(*) FILTER (WHERE plan='Trial')::int trials, COALESCE(SUM(monthly_price) FILTER (WHERE status='Aktivna'),0)::numeric mrr FROM companies`),
+      pool.query(`SELECT COUNT(*)::int total, COUNT(*) FILTER (WHERE status='Aktivan')::int active FROM app_users WHERE role<>'Platform Owner'`),
+      pool.query(`SELECT COUNT(*)::int active FROM auth_sessions WHERE revoked_at IS NULL AND expires_at>now()`)
+    ]);
+    res.json({companies:companies.rows[0],users:users.rows[0],activeSessions:sessions.rows[0].active,system:{api:'Operational',database:'Operational',email:'Operational'}});
+  }catch(e){console.error(e);res.status(500).json({error:'Nije moguće učitati pregled platforme.'})}
+});
+app.get('/api/owner/companies', requireAuth, requirePlatformOwner, async (req,res)=>{
+  try{const r=await pool.query(`SELECT c.*, COUNT(DISTINCT u.id)::int users, COUNT(DISTINCT j.id)::int jobs FROM companies c LEFT JOIN app_users u ON u.company_id=c.id AND u.role<>'Platform Owner' LEFT JOIN jobs j ON j.company_id=c.id GROUP BY c.id ORDER BY c.created_at DESC`);res.json(r.rows)}catch(e){console.error(e);res.status(500).json({error:'Nije moguće učitati firme.'})}
+});
+app.put('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{const {status,plan,monthly_price}=req.body||{};const r=await pool.query(`UPDATE companies SET status=COALESCE($1,status),plan=COALESCE($2,plan),monthly_price=COALESCE($3,monthly_price) WHERE id=$4 RETURNING *`,[status||null,plan||null,monthly_price===undefined?null:Number(monthly_price),req.params.id]);await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.update','company',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify({status,plan,monthly_price}),req.ip]);res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:'Izmjena firme nije uspjela.'})}
+});
+app.get('/api/owner/users', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT u.id,u.name,u.email,u.role,u.status,u.email_verified,u.created_at,c.name company FROM app_users u LEFT JOIN companies c ON c.id=u.company_id ORDER BY u.created_at DESC LIMIT 250`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati korisnike.'})}});
+app.get('/api/owner/audit', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT a.*,u.email actor FROM platform_audit_log a LEFT JOIN app_users u ON u.id=a.actor_user_id ORDER BY a.created_at DESC LIMIT 100`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati audit zapis.'})}});
+
 app.use('/api/clients', requireAuth, crud('clients', { type: 'Fizičko lice', status: 'Aktivan', address: '', note: '', jobs: 0, value: '0,00 €' }));
 app.use('/api/jobs', requireAuth, crud('jobs', { priority: 'Standardno', status: 'Zakazano', city: '', amount: '—' }));
 app.use('/api/offers', requireAuth, crud('offers', { status: 'Nacrt' }));
@@ -237,7 +258,7 @@ function kv(doc, label, value) {
 
 app.get('/api/pdf/invoice/:id', requireAuth, async (req, res) => {
   try {
-    const r = await pool.query('SELECT * FROM invoices WHERE id=$1', [req.params.id]);
+    const r = await pool.query('SELECT * FROM invoices WHERE id=$1 AND company_id=$2', [req.params.id, req.user.company_id]);
     const inv = r.rows[0];
     if (!inv) return res.status(404).json({ error: 'Račun nije pronađen.' });
     res.setHeader('Content-Type', 'application/pdf');
@@ -263,7 +284,7 @@ app.get('/api/pdf/invoice/:id', requireAuth, async (req, res) => {
 
 app.get('/api/pdf/offer/:id', requireAuth, async (req, res) => {
   try {
-    const r = await pool.query('SELECT * FROM offers WHERE id=$1', [req.params.id]);
+    const r = await pool.query('SELECT * FROM offers WHERE id=$1 AND company_id=$2', [req.params.id, req.user.company_id]);
     const off = r.rows[0];
     if (!off) return res.status(404).json({ error: 'Ponuda nije pronađena.' });
     res.setHeader('Content-Type', 'application/pdf');
