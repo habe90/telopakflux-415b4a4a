@@ -118,6 +118,27 @@ async function run() {
   )`);
   await pool.query(`INSERT INTO platform_settings(id) VALUES(1) ON CONFLICT(id) DO NOTHING`);
   await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS avatar_data text`);
+  await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS two_factor_secret text`);
+  await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS two_factor_backup_hashes jsonb DEFAULT '[]'::jsonb`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS company_settings (
+    company_id int PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+    company_name text NOT NULL DEFAULT '', tax_id text DEFAULT '', address text DEFAULT '', city text DEFAULT '',
+    phone text DEFAULT '', email text DEFAULT '', website text DEFAULT '', logo_data text,
+    currency text NOT NULL DEFAULT 'EUR', tax_rate numeric(6,2) NOT NULL DEFAULT 17,
+    invoice_prefix text NOT NULL DEFAULT 'R-', offer_prefix text NOT NULL DEFAULT 'PN-',
+    payment_days int NOT NULL DEFAULT 7, document_note text DEFAULT '',
+    notify_new_job boolean NOT NULL DEFAULT true, notify_status_change boolean NOT NULL DEFAULT true,
+    notify_payment boolean NOT NULL DEFAULT true, notify_low_stock boolean NOT NULL DEFAULT true,
+    notify_maintenance boolean NOT NULL DEFAULT true, email_notifications boolean NOT NULL DEFAULT true,
+    session_timeout_minutes int NOT NULL DEFAULT 10080, updated_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS company_audit_log (
+    id bigserial PRIMARY KEY, company_id int REFERENCES companies(id) ON DELETE CASCADE,
+    actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL, action text NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb, ip_address text, created_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`INSERT INTO company_settings(company_id,company_name)
+    SELECT id,name FROM companies ON CONFLICT(company_id) DO NOTHING`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_tokens_lookup ON auth_tokens(user_id,purpose,token_hash)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_company ON clients(company_id)`);
