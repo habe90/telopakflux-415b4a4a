@@ -538,15 +538,15 @@ function AppShell(){
  },[page,isOwner,profile]);
 
  if(inviteView){
-  return <AcceptInvite invite={inviteView} goLogin={()=>{setInviteView(null);setAuthed(false);setAuthView('login');}}/>;
+  return <AcceptInvite invite={inviteView} goLogin={()=>{setInviteView(null);setAuthed(false);setAuthView('login');}} brand={brand}/>;
  }
 
  if(authLoading) return <div className="auth-loading"><ShieldCheck/><strong>Sigurna provjera sesije...</strong></div>;
  if(!authed){
-  if(authView==='forgot') return <ForgotPassword goLogin={()=>setAuthView('login')}/>;
+  if(authView==='forgot') return <ForgotPassword goLogin={()=>setAuthView('login')} brand={brand}/>;
   return authView==='login'
-   ? <Login onLogin={authSuccess} goRegister={()=>setAuthView('register')} goForgot={()=>setAuthView('forgot')}/>
-   : <Register onRegister={authSuccess} goLogin={()=>setAuthView('login')}/>;
+   ? <Login onLogin={authSuccess} goRegister={()=>setAuthView('register')} goForgot={()=>setAuthView('forgot')} brand={brand}/>
+   : <Register onRegister={authSuccess} goLogin={()=>setAuthView('login')} brand={brand}/>;
  }
 
  return <div className="app">
