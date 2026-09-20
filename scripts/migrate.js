@@ -103,6 +103,20 @@ async function run() {
     action text NOT NULL, target_type text, target_id text, metadata jsonb DEFAULT '{}'::jsonb,
     ip_address text, created_at timestamptz DEFAULT now()
   )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS platform_settings (
+    id int PRIMARY KEY DEFAULT 1 CHECK (id=1),
+    app_name text NOT NULL DEFAULT 'TeloPak Flux',
+    tagline text NOT NULL DEFAULT 'Cijeli posao. Na jednom mjestu.',
+    support_email text NOT NULL DEFAULT 'podrska@telopak.fr',
+    primary_color text NOT NULL DEFAULT '#1769d2',
+    logo_data text,
+    favicon_data text,
+    locale text NOT NULL DEFAULT 'bs-BA',
+    registrations_enabled boolean NOT NULL DEFAULT true,
+    maintenance_mode boolean NOT NULL DEFAULT false,
+    updated_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`INSERT INTO platform_settings(id) VALUES(1) ON CONFLICT(id) DO NOTHING`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_tokens_lookup ON auth_tokens(user_id,purpose,token_hash)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_company ON clients(company_id)`);
