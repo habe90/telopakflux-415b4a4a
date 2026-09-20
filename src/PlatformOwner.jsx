@@ -142,19 +142,28 @@ export function OwnerCompanies(){
   </>;
 }
 export function OwnerUsers(){
- const[rows,setRows]=useState([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false),[editUser,setEditUser]=useState(null);
- const load=()=>api('users').then(d=>setRows(Array.isArray(d)?d:[])).catch(e=>setError(e.message)).finally(()=>setReady(true));
+ const[rows,setRows]=useState([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false),[editUser,setEditUser]=useState(null),[savingId,setSavingId]=useState(null),[notice,setNotice]=useState('');
+ const load=()=>api('users').then(d=>{setRows(Array.isArray(d)?d:[]);setError('')}).catch(e=>setError(e.message)).finally(()=>setReady(true));
  useEffect(()=>{load()},[]);
  const visible=useMemo(()=>rows.filter(x=>`${s(x.name)} ${s(x.email)} ${s(x.company)}`.toLowerCase().includes(search.toLowerCase())),[rows,search]);
- const updateUser=async(u,patch)=>{try{await api(`users/${u.id}`,{method:'PUT',body:JSON.stringify(patch)});load()}catch(e){alert(e.message)}};
+ const updateUser=async(u,patch)=>{
+  const previous={...u};setSavingId(u.id);setNotice('');
+  setRows(list=>list.map(x=>x.id===u.id?{...x,...patch}:x));
+  try{
+   const saved=await api(`users/${u.id}`,{method:'PUT',body:JSON.stringify(patch)});
+   setRows(list=>list.map(x=>x.id===u.id?{...x,...saved}:x));
+   setNotice('Promjena je uspješno sačuvana.');
+  }catch(e){setRows(list=>list.map(x=>x.id===u.id?previous:x));setError(e.message)}finally{setSavingId(null)}
+ };
  const verifyUser=u=>updateUser(u,{email_verified:true});
  const deleteUser=async u=>{if(!window.confirm(`Obrisati korisnika ${u.name}?`))return;try{await api(`users/${u.id}`,{method:'DELETE'});load()}catch(e){alert(e.message)}};
  if(error)return <><div className="owner-head"><div><p>GLOBAL USERS</p><h1>Korisnici platforme</h1></div></div><ErrorBox error={error}/></>;
  return <><div className="owner-head"><div><p>GLOBAL USERS</p><h1>Korisnici platforme</h1><span>Pregled svih vlasnika firmi i članova njihovih timova.</span></div></div>
+  {error&&<ErrorBox error={error}/>} {notice&&<div className="owner-save-notice"><CheckCircle2/>{notice}</div>}
   <section className="owner-panel"><div className="owner-table-tools"><div className="owner-search"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pretraži korisnika, email ili firmu..."/></div><span>{visible.length} korisnika</span></div>
    {!ready?<Skeleton/>:<div className="table-wrap"><table className="owner-table"><thead><tr><th>Korisnik</th><th>Firma</th><th>Uloga</th><th>Email verifikovan</th><th>Status</th><th>Registracija</th><th>Akcije</th></tr></thead><tbody>
     {!visible.length&&<tr><td colSpan={7} className="empty-row">Nema korisnika za prikaz.</td></tr>}
-    {visible.map(u=><tr key={u.id}><td><div className="owner-company-cell"><span>{initials2(u.name)}</span><div><strong>{s(u.name)||'Bez imena'}</strong><small>{s(u.email)}</small></div></div></td><td>{u.company||'Platforma'}</td><td><select value={u.role} onChange={e=>updateUser(u,{role:e.target.value})}><option>Administrator</option><option>Menadžer</option><option>Radnik</option><option>Platform Owner</option></select></td><td>{u.email_verified?<span className="owner-verified-tag"><CheckCircle2/> Verifikovan</span>:<button className="owner-action verify" onClick={()=>verifyUser(u)}><BadgeCheck/> Verifikuj ručno</button>}</td><td><select value={u.status} onChange={e=>updateUser(u,{status:e.target.value})}><option>Aktivan</option><option>Neaktivan</option></select></td><td>{fmtDate(u.created_at)}</td><td className="owner-row-actions"><button className="owner-action" onClick={()=>setEditUser(u)}><Pencil/> Uredi</button><button className="owner-action danger" onClick={()=>deleteUser(u)}><Trash2/></button></td></tr>)}
+    {visible.map(u=><tr key={u.id}><td><div className="owner-company-cell"><span>{initials2(u.name)}</span><div><strong>{s(u.name)||'Bez imena'}</strong><small>{s(u.email)}</small></div></div></td><td>{u.company||'Platforma'}</td><td><select value={u.role} disabled={savingId===u.id} onChange={e=>updateUser(u,{role:e.target.value})}><option>Administrator</option><option>Menadžer</option><option>Radnik</option><option>Platform Owner</option></select>{savingId===u.id&&<small className="owner-saving-inline">Čuvanje...</small>}</td><td>{u.email_verified?<span className="owner-verified-tag"><CheckCircle2/> Verifikovan</span>:<button className="owner-action verify" onClick={()=>verifyUser(u)}><BadgeCheck/> Verifikuj ručno</button>}</td><td><select value={u.status} onChange={e=>updateUser(u,{status:e.target.value})}><option>Aktivan</option><option>Neaktivan</option></select></td><td>{fmtDate(u.created_at)}</td><td className="owner-row-actions"><button className="owner-action" onClick={()=>setEditUser(u)}><Pencil/> Uredi</button><button className="owner-action danger" onClick={()=>deleteUser(u)}><Trash2/></button></td></tr>)}
    </tbody></table></div>}
   </section>
   {editUser&&<UserEditModal user={editUser} onClose={()=>setEditUser(null)} onSaved={load}/>}
