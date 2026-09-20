@@ -237,6 +237,74 @@
 .profile-photo-loader{position:absolute;inset:0;z-index:2;display:grid;place-items:center;color:#1769d2;font-size:16px;font-weight:800;animation:pulse 1s infinite}
 .profile-unsaved{display:block;color:#b17310;font-size:9px;font-style:normal;font-weight:700;margin-top:6px}
 @keyframes pulse{50%{opacity:.35}}
+
+/* Čvrsta ograničenja za korisničke avatare — uploadovana slika ne smije širiti layout */
+img.avatar-image,
+span.avatar-initials{
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  max-width:38px!important;
+  min-height:38px!important;
+  max-height:38px!important;
+  aspect-ratio:1/1!important;
+  border-radius:50%!important;
+  box-sizing:border-box!important;
+  flex:0 0 38px!important;
+}
+img.avatar-image{
+  display:block!important;
+  object-fit:cover!important;
+  object-position:center!important;
+}
+span.avatar-initials{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  line-height:1!important;
+}
+.profile-photo{
+  width:72px!important;
+  height:72px!important;
+  min-width:72px!important;
+  max-width:72px!important;
+  flex:0 0 72px!important;
+  position:relative!important;
+}
+.profile-photo>img.avatar-image,
+.profile-photo>span.avatar-initials{
+  width:72px!important;
+  height:72px!important;
+  min-width:72px!important;
+  max-width:72px!important;
+  min-height:72px!important;
+  max-height:72px!important;
+  flex:0 0 72px!important;
+  border-radius:16px!important;
+}
+.profile-pop-hero img.avatar-image,
+.profile-pop-hero span.avatar-initials{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  max-width:46px!important;
+  min-height:46px!important;
+  max-height:46px!important;
+  flex:0 0 46px!important;
+}
+header img.avatar-image,
+header span.avatar-initials,
+.topbar img.avatar-image,
+.topbar span.avatar-initials{
+  width:36px!important;
+  height:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  min-height:36px!important;
+  max-height:36px!important;
+  flex:0 0 36px!important;
+}
 .otp-error.full{grid-column:1/-1}
 .sessions-body{padding:6px 24px 22px}
 .sessions-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
