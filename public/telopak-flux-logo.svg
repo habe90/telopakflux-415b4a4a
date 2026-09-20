@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 150" role="img" aria-label="TeloPak Flux">
+  <rect width="760" height="150" rx="4" fill="#111a3f"/>
+  <g fill="#ef1470">
+    <path d="M14 30h116l-25 24H14l24-24z"/>
+    <path d="M62 57h33v62L62 86V57z"/>
+    <path d="M98 57h24l27-27h30l-57 57-24 20V57z"/>
+    <path d="M117 17h38l12 12-12 12h-9l7-8h-35v-6h35l-7-7z" fill="#111a3f"/>
+  </g>
+  <g font-family="Arial Black,Arial,sans-serif" font-weight="900" font-style="italic">
+    <text x="140" y="88" font-size="67" fill="#fff" letter-spacing="-5">TeloPak</text>
+    <text x="500" y="88" font-size="67" fill="#ef1470" letter-spacing="-5">Flux</text>
+  </g>
+</svg>
