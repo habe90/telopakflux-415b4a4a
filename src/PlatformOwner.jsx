@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState} from 'react';
-import {Building2,Users,WalletCards,Activity,Search,ShieldCheck,Server,Database,Mail,CheckCircle2,Clock3,AlertTriangle,RefreshCw,ExternalLink,X,Plus,Trash2} from 'lucide-react';
+import {Building2,Users,WalletCards,Activity,Search,ShieldCheck,Server,Database,Mail,CheckCircle2,Clock3,AlertTriangle,RefreshCw,ExternalLink,X,Plus,Trash2,Save,Image,Palette,Globe2,ToggleLeft,Upload,BriefcaseBusiness,FileText,ReceiptText,UserCog} from 'lucide-react';
 const api=async(path,opts)=>{const r=await fetch(`/api/owner/${path}`,{credentials:'include',headers:opts?.body?{'Content-Type':'application/json'}:undefined,...opts});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Greška prilikom učitavanja podataka.');return d};
 const money=n=>new Intl.NumberFormat('bs-BA',{style:'currency',currency:'EUR'}).format(Number(n||0));
 const s=v=>(v===null||v===undefined)?'':String(v);
@@ -29,6 +29,28 @@ function NewCompanyForm({onCreated,onClose}){
   <button className="primary owner-form-submit" disabled={busy}>{busy?'Kreiranje...':'Kreiraj firmu'}</button>
  </form>;
 }
+function SettingToggle({checked,onChange,title,text}){return <label className="owner-setting-toggle"><div><strong>{title}</strong><span>{text}</span></div><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)}/><i/></label>}
+const imageToData=(file,done,fail)=>{if(!file)return;if(file.size>1024*1024){fail('Fajl mora biti manji od 1 MB.');return}const reader=new FileReader();reader.onload=()=>done(reader.result);reader.onerror=()=>fail('Fajl nije moguće pročitati.');reader.readAsDataURL(file)};
+export function OwnerSettings({onBrandChange}){
+ const[f,setF]=useState(null),[busy,setBusy]=useState(false),[saved,setSaved]=useState(''),[error,setError]=useState('');
+ useEffect(()=>{api('settings').then(setF).catch(e=>setError(e.message))},[]);
+ const set=(k,v)=>setF(x=>({...x,[k]:v}));
+ const upload=(key,file)=>imageToData(file,v=>{set(key,v);setError('')},setError);
+ const save=async e=>{e.preventDefault();setBusy(true);setError('');setSaved('');try{const d=await api('settings',{method:'PUT',body:JSON.stringify(f)});setF(d);onBrandChange?.(d);setSaved('Postavke su sačuvane i primijenjene na aplikaciju.')}catch(x){setError(x.message)}finally{setBusy(false)}};
+ if(!f)return error?<ErrorBox error={error}/>:<Skeleton/>;
+ return <><div className="owner-head"><div><p>PLATFORM CONFIGURATION</p><h1>Postavke aplikacije</h1><span>Upravljajte identitetom, brendom i globalnim ponašanjem platforme.</span></div></div>
+ <form className="owner-settings-layout" onSubmit={save}>
+  <div className="owner-settings-main">
+   <section className="owner-settings-card"><div className="owner-settings-title"><span><Image/></span><div><h3>Vizuelni identitet</h3><p>Logo i favicon koji se prikazuju svim korisnicima platforme.</p></div></div><div className="owner-settings-body">
+    <div className="owner-brand-upload"><div className="owner-brand-preview">{f.logo_data?<img src={f.logo_data}/>:<strong>{f.app_name}</strong>}</div><div><strong>Glavni logo</strong><p>PNG, JPG, WebP ili SVG · maksimalno 1 MB</p><label className="owner-upload-btn"><Upload/> Odaberi logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e=>upload('logo_data',e.target.files?.[0])}/></label>{f.logo_data&&<button type="button" className="owner-link-danger" onClick={()=>set('logo_data',null)}>Ukloni logo</button>}</div></div>
+    <div className="owner-brand-upload favicon"><div className="owner-favicon-preview">{f.favicon_data?<img src={f.favicon_data}/>:initials2(f.app_name)}</div><div><strong>Favicon preglednika</strong><p>Kvadratna PNG/ICO slika, preporučeno 64 × 64 px.</p><label className="owner-upload-btn"><Upload/> Odaberi favicon<input type="file" accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml" onChange={e=>upload('favicon_data',e.target.files?.[0])}/></label>{f.favicon_data&&<button type="button" className="owner-link-danger" onClick={()=>set('favicon_data',null)}>Ukloni favicon</button>}</div></div>
+   </div></section>
+   <section className="owner-settings-card"><div className="owner-settings-title"><span><Palette/></span><div><h3>Naziv i izgled</h3><p>Osnovni podaci i primarna boja korisničkog interfejsa.</p></div></div><div className="owner-settings-body owner-settings-fields"><label>Naziv aplikacije<input value={f.app_name||''} onChange={e=>set('app_name',e.target.value)} placeholder="TeloPak Flux" required/></label><label>Tagline<input value={f.tagline||''} onChange={e=>set('tagline',e.target.value)} placeholder="Cijeli posao. Na jednom mjestu."/></label><label>Email podrške<input type="email" value={f.support_email||''} onChange={e=>set('support_email',e.target.value)} placeholder="podrska@domena.com"/></label><label>Primarna boja<div className="owner-color-field"><input type="color" value={f.primary_color||'#1769d2'} onChange={e=>set('primary_color',e.target.value)}/><input value={f.primary_color||''} onChange={e=>set('primary_color',e.target.value)} pattern="#[0-9a-fA-F]{6}"/></div></label><label>Jezik platforme<select value={f.locale||'bs-BA'} onChange={e=>set('locale',e.target.value)}><option value="bs-BA">Bosanski</option><option value="hr-HR">Hrvatski</option><option value="sr-Latn-RS">Srpski (latinica)</option><option value="en-US">English</option></select></label></div></section>
+  </div>
+  <div className="owner-settings-side"><section className="owner-settings-card"><div className="owner-settings-title"><span><ToggleLeft/></span><div><h3>Globalne kontrole</h3><p>Primjenjuju se na cijelu platformu.</p></div></div><div className="owner-settings-toggles"><SettingToggle checked={!!f.registrations_enabled} onChange={v=>set('registrations_enabled',v)} title="Nove registracije" text="Dozvoli firmama da samostalno otvore nalog."/><SettingToggle checked={!!f.maintenance_mode} onChange={v=>set('maintenance_mode',v)} title="Maintenance režim" text="Prikaži obavijest da se izvode radovi."/></div></section><section className="owner-settings-card owner-settings-help"><Globe2/><h3>Javne postavke</h3><p>Sačuvani naziv, logo, favicon i boja učitavaju se i prije prijave korisnika.</p></section></div>
+  <div className="owner-settings-save">{error&&<span className="owner-save-error"><AlertTriangle/>{error}</span>}{saved&&<span className="owner-save-success"><CheckCircle2/>{saved}</span>}<button className="primary" disabled={busy}><Save/>{busy?'Čuvanje...':'Sačuvaj postavke'}</button></div>
+ </form></>;
+}
 function CompanyDetail({id,onClose,onChanged}){
  const[data,setData]=useState(null),[error,setError]=useState('');
  const load=()=>api(`companies/${id}`).then(setData).catch(e=>setError(e.message));
@@ -41,6 +63,7 @@ function CompanyDetail({id,onClose,onChanged}){
  if(!data)return <Modal title="Detalji firme" onClose={onClose} wide><Skeleton/></Modal>;
  const c=data.company;
  return <Modal title={c.name} onClose={onClose} wide>
+  <div className="owner-company-hero"><span>{initials2(c.name)}</span><div><p>ORGANIZACIJA #{c.id}</p><h2>{c.name}</h2><small>{c.industry||'Djelatnost nije unesena'} · Registrovana {fmtDate(c.created_at)}</small></div><Status value={c.status}/></div>
   <div className="owner-detail-stats">
    <div><small>Korisnici</small><strong>{data.users.length}</strong></div>
    <div><small>Klijenti</small><strong>{data.stats.clients}</strong></div>
@@ -48,10 +71,13 @@ function CompanyDetail({id,onClose,onChanged}){
    <div><small>Ponude</small><strong>{data.stats.offers}</strong></div>
    <div><small>Računi</small><strong>{data.stats.invoices}</strong></div>
   </div>
-  <h4 className="owner-subhead">Podaci o firmi</h4>
-  <div className="owner-form-row three">
+  <h4 className="owner-subhead">Podaci i pretplata</h4>
+  <div className="owner-detail-form">
+   <label>Naziv firme<input defaultValue={c.name} onBlur={e=>e.target.value!==c.name&&updateCompany({name:e.target.value})}/></label>
+   <label>Djelatnost<input defaultValue={c.industry||''} placeholder="Nije unesena" onBlur={e=>e.target.value!==(c.industry||'')&&updateCompany({industry:e.target.value})}/></label>
    <label>Plan<select value={c.plan} onChange={e=>updateCompany({plan:e.target.value})}><option>Trial</option><option>Starter</option><option>Pro</option><option>Enterprise</option></select></label>
-   <label>Mjesečna cijena (€)<input type="number" defaultValue={c.monthly_price} onBlur={e=>updateCompany({monthly_price:e.target.value})}/></label>
+   <label>Mjesečna cijena (€)<input type="number" step="0.01" defaultValue={c.monthly_price} onBlur={e=>updateCompany({monthly_price:e.target.value})}/></label>
+   <label>Trial ističe<input type="date" defaultValue={c.trial_ends_at?s(c.trial_ends_at).slice(0,10):''} onChange={e=>updateCompany({trial_ends_at:e.target.value})}/></label>
    <label>Status<select value={c.status} onChange={e=>updateCompany({status:e.target.value})}><option>Aktivna</option><option>Suspendovana</option></select></label>
   </div>
   <h4 className="owner-subhead">Korisnici firme</h4>
