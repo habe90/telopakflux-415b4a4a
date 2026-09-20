@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {Building2,Users,WalletCards,Activity,Search,ShieldCheck,Server,Database,Mail,CheckCircle2,Clock3,AlertTriangle,RefreshCw,ExternalLink,X,Plus,Trash2,Save,Image,Palette,Globe2,ToggleLeft,Upload,BriefcaseBusiness,FileText,ReceiptText,UserCog} from 'lucide-react';
-const api=async(path,opts)=>{const r=await fetch(`/api/owner/${path}`,{credentials:'include',headers:opts?.body?{'Content-Type':'application/json'}:undefined,...opts});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Greška prilikom učitavanja podataka.');return d};
+const api=async(path,opts)=>{const r=await fetch(`/api/owner/${path}`,{credentials:'include',headers:opts?.body?{'Content-Type':'application/json'}:undefined,...opts});if(r.status===413)throw new Error('Fajl je prevelik za slanje. Odaberite manju sliku (do 1 MB).');const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Greška prilikom obrade zahtjeva (HTTP ${r.status}).`);return d};
 const money=n=>new Intl.NumberFormat('bs-BA',{style:'currency',currency:'EUR'}).format(Number(n||0));
 const s=v=>(v===null||v===undefined)?'':String(v);
 const initials2=v=>s(v).trim().slice(0,2).toUpperCase()||'—';
