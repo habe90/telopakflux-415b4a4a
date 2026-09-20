@@ -354,7 +354,7 @@ function Avatar({profile,className}){return profile?.avatar?<img className={clas
 
 function ProfileMenu({close,go,onProfile,onLogout,profile}){
  const ref=useRef(null);useClickOutside(ref,close);
- return <div className="nav-pop profile-pop" ref={ref}><div className="profile-pop-hero"><Avatar profile={profile} className="avatar profile-nav-avatar"/><div><strong>{profile.name}</strong><span>{profile.email}</span><em>Administrator</em></div></div><div className="profile-menu-list"><button onClick={()=>{close();onProfile()}}><UserRound/><div><strong>Moj profil</strong><span>Lični podaci i lozinka</span></div><ChevronRight/></button><button onClick={()=>{close();go('Postavke')}}><Settings/><div><strong>Postavke firme</strong><span>Dokumenti i sigurnost</span></div><ChevronRight/></button><button onClick={()=>{close();go('Korisnici')}}><UserCog/><div><strong>Korisnici i pristup</strong><span>Upravljanje članovima tima</span></div><ChevronRight/></button></div><button className="profile-logout" onClick={onLogout}><LogOut/> Odjavi se</button></div>
+ return <div className="nav-pop profile-pop" ref={ref}><div className="profile-pop-hero"><Avatar profile={profile} className="avatar profile-nav-avatar"/><div><strong>{profile.name}</strong><span>{profile.email}</span><em>{profile.role||'Administrator'}</em></div></div><div className="profile-menu-list"><button onClick={()=>{close();onProfile()}}><UserRound/><div><strong>Moj profil</strong><span>Lični podaci i lozinka</span></div><ChevronRight/></button><button onClick={()=>{close();go('Postavke')}}><Settings/><div><strong>Postavke firme</strong><span>Dokumenti i sigurnost</span></div><ChevronRight/></button><button onClick={()=>{close();go('Korisnici')}}><UserCog/><div><strong>Korisnici i pristup</strong><span>Upravljanje članovima tima</span></div><ChevronRight/></button></div><button className="profile-logout" onClick={onLogout}><LogOut/> Odjavi se</button></div>
 }
 
 const globalSearchData=[
@@ -392,51 +392,94 @@ function GlobalSearch({close,go}){
  </div></div>
 }
 
-const sessionSeed=[
- {id:1,device:'Chrome · Windows',location:'Sarajevo, BiH',time:'Aktivno sada',current:true,icon:Laptop},
- {id:2,device:'Safari · iPhone 14',location:'Sarajevo, BiH',time:'Prije 2 sata',current:false,icon:Smartphone},
- {id:3,device:'Chrome · Android',location:'Ilidža, BiH',time:'Jučer u 18:20',current:false,icon:Smartphone}
-];
-const loginHistorySeed=[
- {id:1,device:'Chrome · Windows',location:'Sarajevo, BiH',time:'Danas u 08:14',status:'success'},
- {id:2,device:'Safari · iPhone 14',location:'Sarajevo, BiH',time:'Jučer u 19:02',status:'success'},
- {id:3,device:'Nepoznat uređaj',location:'Beograd, Srbija',time:'18.03.2025. u 03:41',status:'failed'}
-];
+function parseDevice(ua=''){
+ if(/iphone/i.test(ua))return 'Safari · iPhone';
+ if(/android/i.test(ua))return 'Chrome · Android';
+ if(/ipad/i.test(ua))return 'Safari · iPad';
+ if(/edg/i.test(ua))return 'Edge · Windows';
+ if(/chrome/i.test(ua)&&/windows/i.test(ua))return 'Chrome · Windows';
+ if(/chrome/i.test(ua)&&/mac/i.test(ua))return 'Chrome · macOS';
+ if(/firefox/i.test(ua))return 'Firefox';
+ if(/safari/i.test(ua)&&/mac/i.test(ua))return 'Safari · macOS';
+ return ua?ua.slice(0,40):'Nepoznat uređaj';
+}
+function relTime(iso){
+ const d=new Date(iso),diff=(Date.now()-d.getTime())/1000;
+ if(diff<60)return 'Upravo sada';
+ if(diff<3600)return `Prije ${Math.floor(diff/60)} min`;
+ if(diff<86400)return `Prije ${Math.floor(diff/3600)} h`;
+ return d.toLocaleString('bs-BA');
+}
 
 function ProfileModal({close,onSaved,profile,setProfile}){
  const [tab,setTab]=useState('Podaci');
- const [name,setName]=useState(profile.name),[email,setEmail]=useState(profile.email),[phone,setPhone]=useState(profile.phone);
+ const [name,setName]=useState(profile.name),[phone,setPhone]=useState(profile.phone);
  const [curPw,setCurPw]=useState(''),[newPw,setNewPw]=useState(''),[confirmPw,setConfirmPw]=useState(''),[pwError,setPwError]=useState('');
- const [sessions,setSessions]=useState(sessionSeed);
+ const [savingInfo,setSavingInfo]=useState(false),[savingPw,setSavingPw]=useState(false),[uploading,setUploading]=useState(false);
+ const [sessions,setSessions]=useState([]),[sessionsLoading,setSessionsLoading]=useState(true),[sessionsError,setSessionsError]=useState('');
  const fileRef=useRef(null);
  const pickPhoto=()=>fileRef.current?.click();
- const onPhoto=e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{setProfile(p=>({...p,avatar:reader.result}));onSaved('Profilna slika je ažurirana.');};reader.readAsDataURL(file);};
- const submit=e=>{
+ const loadSessions=()=>{setSessionsLoading(true);fetch('/api/auth/sessions',{credentials:'include'}).then(r=>r.json()).then(d=>{setSessions(Array.isArray(d)?d:[]);setSessionsError('')}).catch(()=>setSessionsError('Nije moguće učitati sesije.')).finally(()=>setSessionsLoading(false))};
+ useEffect(()=>{if(tab==='Sesije')loadSessions()},[tab]);
+ const onPhoto=e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  if(file.size>1024*1024){onSaved('Slika mora biti manja od 1 MB.');return}
+  const reader=new FileReader();
+  reader.onload=async()=>{
+   setUploading(true);
+   try{
+    const r=await fetch('/api/auth/profile',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({avatar_data:reader.result})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'Greška');
+    setProfile(p=>({...p,...d.user}));onSaved('Profilna slika je sačuvana.');
+   }catch(err){onSaved(err.message||'Slanje slike nije uspjelo.')}finally{setUploading(false)}
+  };
+  reader.readAsDataURL(file);
+ };
+ const removePhoto=async()=>{
+  setUploading(true);
+  try{const r=await fetch('/api/auth/profile',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({avatar_data:''})});const d=await r.json();if(!r.ok)throw new Error(d.error);setProfile(p=>({...p,...d.user}));onSaved('Profilna slika je uklonjena.')}
+  catch(err){onSaved(err.message||'Greška prilikom uklanjanja slike.')}finally{setUploading(false)}
+ };
+ const submit=async e=>{
   e.preventDefault();
-  if(tab==='Podaci'){setProfile(p=>({...p,name,email,phone}));onSaved('Profil je uspješno ažuriran.');close();return;}
+  if(tab==='Podaci'){
+   setSavingInfo(true);
+   try{
+    const r=await fetch('/api/auth/profile',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'Greška');
+    setProfile(p=>({...p,...d.user}));onSaved('Profil je uspješno ažuriran i sačuvan.');close();
+   }catch(err){onSaved(err.message||'Ažuriranje profila nije uspjelo.')}finally{setSavingInfo(false)}
+   return;
+  }
   if(tab==='Sigurnost'){
    if(!curPw){setPwError('Unesite trenutnu lozinku.');return;}
-   if(newPw.length<8){setPwError('Nova lozinka mora imati najmanje 8 karaktera.');return;}
+   if(newPw.length<12){setPwError('Nova lozinka mora imati najmanje 12 znakova.');return;}
    if(newPw!==confirmPw){setPwError('Nova lozinka i potvrda se ne podudaraju.');return;}
-   setPwError('');onSaved('Lozinka je uspješno promijenjena.');close();return;
+   setPwError('');setSavingPw(true);
+   try{
+    const r=await fetch('/api/auth/password',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({currentPassword:curPw,newPassword:newPw})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'Greška');
+    onSaved('Lozinka je uspješno promijenjena. Ostale sesije su odjavljene.');setCurPw('');setNewPw('');setConfirmPw('');close();
+   }catch(err){setPwError(err.message||'Promjena lozinke nije uspjela.')}finally{setSavingPw(false)}
+   return;
   }
  };
- const endSession=id=>setSessions(s=>s.filter(x=>x.id!==id));
- const endAllOther=()=>{setSessions(s=>s.filter(x=>x.current));onSaved('Odjavljeni ste sa svih drugih uređaja.');};
+ const endSession=async id=>{try{await fetch(`/api/auth/sessions/${id}`,{method:'DELETE',credentials:'include'});loadSessions()}catch{}};
+ const endAllOther=async()=>{try{await fetch('/api/auth/sessions/revoke-others',{method:'POST',credentials:'include'});loadSessions();onSaved('Odjavljeni ste sa svih drugih uređaja.')}catch{}};
  return <div className="modal-backdrop" onMouseDown={close}><div className="modal profile-modal" onMouseDown={e=>e.stopPropagation()}>
   <div className="modal-head"><div><span className="modal-kicker">KORISNIČKI RAČUN</span><h2>Moj profil</h2><p>Upravljajte ličnim podacima i sigurnošću naloga.</p></div><button className="icon-btn" onClick={close}><X/></button></div>
-  <div className="profile-modal-top"><div className="profile-photo"><Avatar profile={profile}/><button type="button" onClick={pickPhoto}><Edit3/></button><input type="file" accept="image/*" ref={fileRef} style={{display:'none'}} onChange={onPhoto}/></div><div><strong>{profile.name}</strong><span>Administrator · TeloPak d.o.o.</span><small><i></i> Aktivan nalog</small></div></div>
+  <div className="profile-modal-top"><div className="profile-photo"><Avatar profile={profile}/><button type="button" onClick={pickPhoto} disabled={uploading}><Edit3/></button><input type="file" accept="image/png,image/jpeg,image/webp" ref={fileRef} style={{display:'none'}} onChange={onPhoto}/></div><div><strong>{profile.name}</strong><span>{profile.role||'Administrator'}</span><small><i></i> Aktivan nalog</small>{profile.avatar&&<button type="button" className="text-link" onClick={removePhoto} disabled={uploading}>Ukloni sliku</button>}</div></div>
   <div className="profile-tabs"><button className={tab==='Podaci'?'active':''} onClick={()=>setTab('Podaci')}>Lični podaci</button><button className={tab==='Sigurnost'?'active':''} onClick={()=>setTab('Sigurnost')}>Sigurnost</button><button className={tab==='Sesije'?'active':''} onClick={()=>setTab('Sesije')}>Sesije</button></div>
   <form onSubmit={submit}>
-   {tab==='Podaci'&&<div className="form-grid"><label className="full">Ime i prezime<input value={name} onChange={e=>setName(e.target.value)} required/></label><label>Email adresa<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label><label>Broj telefona<input value={phone} onChange={e=>setPhone(e.target.value)}/></label><label className="full">Uloga<input value="Administrator" disabled/><span className="field-help">Ulogu može promijeniti samo drugi administrator.</span></label></div>}
-   {tab==='Sigurnost'&&<div className="form-grid"><label className="full">Trenutna lozinka<input type="password" value={curPw} onChange={e=>{setCurPw(e.target.value);setPwError('')}} placeholder="Unesite trenutnu lozinku" required/></label><label>Nova lozinka<input type="password" value={newPw} onChange={e=>{setNewPw(e.target.value);setPwError('')}} minLength="8" placeholder="Najmanje 8 znakova" required/></label><PasswordStrength value={newPw}/><label>Ponovite novu lozinku<input type="password" value={confirmPw} onChange={e=>{setConfirmPw(e.target.value);setPwError('')}} minLength="8" placeholder="Ponovite lozinku" required/></label>{pwError&&<p className="otp-error full"><AlertTriangle/> {pwError}</p>}<div className="modal-note full"><ShieldCheck/> Nakon promjene lozinke ostat ćete prijavljeni na ovom uređaju, a ostale sesije će biti odjavljene.</div></div>}
+   {tab==='Podaci'&&<div className="form-grid"><label className="full">Ime i prezime<input value={name} onChange={e=>setName(e.target.value)} required/></label><label>Email adresa<input type="email" value={profile.email} disabled/><span className="field-help">Za promjenu email adrese kontaktirajte podršku.</span></label><label>Broj telefona<input value={phone||''} onChange={e=>setPhone(e.target.value)}/></label><label className="full">Uloga<input value={profile.role||'Administrator'} disabled/><span className="field-help">Ulogu može promijeniti samo drugi administrator.</span></label></div>}
+   {tab==='Sigurnost'&&<div className="form-grid"><label className="full">Trenutna lozinka<input type="password" value={curPw} onChange={e=>{setCurPw(e.target.value);setPwError('')}} placeholder="Unesite trenutnu lozinku" required/></label><label>Nova lozinka<input type="password" value={newPw} onChange={e=>{setNewPw(e.target.value);setPwError('')}} minLength="12" placeholder="Najmanje 12 znakova" required/></label><PasswordStrength value={newPw}/><label>Ponovite novu lozinku<input type="password" value={confirmPw} onChange={e=>{setConfirmPw(e.target.value);setPwError('')}} minLength="12" placeholder="Ponovite lozinku" required/></label>{pwError&&<p className="otp-error full"><AlertTriangle/> {pwError}</p>}<div className="modal-note full"><ShieldCheck/> Nakon promjene lozinke ostat ćete prijavljeni na ovom uređaju, a ostale sesije će biti odjavljene.</div></div>}
    {tab==='Sesije'&&<div className="sessions-body">
      <div className="sessions-head"><div><strong>Aktivni uređaji</strong><span>Uređaji trenutno prijavljeni na vaš nalog</span></div><button type="button" className="secondary" onClick={endAllOther} disabled={sessions.length<=1}>Odjavi sa svih drugih uređaja</button></div>
-     <div className="session-list">{sessions.map(s=><div className="session-row" key={s.id}><span className="session-icon"><s.icon/></span><div><strong>{s.device} {s.current&&<em className="current-tag">Ovaj uređaj</em>}</strong><span><Globe/> {s.location} · {s.time}</span></div>{!s.current&&<button type="button" className="text-link" onClick={()=>endSession(s.id)}>Odjavi</button>}</div>)}</div>
-     <div className="sessions-head" style={{marginTop:6}}><div><strong>Historija prijava</strong><span>Posljednji pokušaji prijave na vaš nalog</span></div></div>
-     <div className="login-history">{loginHistorySeed.map(h=><div className="history-row" key={h.id}><span className={`history-dot ${h.status}`}></span><div><strong>{h.device}</strong><span>{h.location} · {h.time}</span></div><span className={`history-status ${h.status}`}>{h.status==='success'?'Uspješno':'Neuspješno'}</span></div>)}</div>
+     {sessionsLoading&&<p className="field-help">Učitavanje sesija...</p>}
+     {sessionsError&&<p className="otp-error"><AlertTriangle/> {sessionsError}</p>}
+     {!sessionsLoading&&!sessionsError&&<div className="session-list">{sessions.map(s=><div className="session-row" key={s.id}><span className="session-icon">{/iphone|android|ipad/i.test(s.user_agent||'')?<Smartphone/>:<Laptop/>}</span><div><strong>{parseDevice(s.user_agent)} {s.current&&<em className="current-tag">Ovaj uređaj</em>}</strong><span><Globe/> {s.ip_address||'Nepoznata IP'} · {relTime(s.created_at)}</span></div>{!s.current&&<button type="button" className="text-link" onClick={()=>endSession(s.id)}>Odjavi</button>}</div>)}{!sessions.length&&<p className="field-help">Nema aktivnih sesija.</p>}</div>}
    </div>}
-   <div className="modal-actions"><button type="button" className="secondary" onClick={close}>{tab==='Sesije'?'Zatvori':'Odustani'}</button>{tab!=='Sesije'&&<button className="primary"><Save/> {tab==='Podaci'?'Sačuvaj profil':'Promijeni lozinku'}</button>}</div>
+   <div className="modal-actions"><button type="button" className="secondary" onClick={close}>{tab==='Sesije'?'Zatvori':'Odustani'}</button>{tab==='Podaci'&&<button className="primary" disabled={savingInfo}><Save/> {savingInfo?'Čuvanje...':'Sačuvaj profil'}</button>}{tab==='Sigurnost'&&<button className="primary" disabled={savingPw}><Save/> {savingPw?'Čuvanje...':'Promijeni lozinku'}</button>}</div>
   </form>
  </div></div>
 }
