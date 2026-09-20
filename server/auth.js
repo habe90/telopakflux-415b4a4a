@@ -23,9 +23,12 @@ export function setSessionCookie(res, token, remember = false) {
 export function clearSessionCookie(res) { res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' }); }
 export async function createSession(userId, req, res, remember = false) {
   const token = randomToken();
-  const expires = new Date(Date.now() + (remember ? 30 : SESSION_DAYS) * 86400000);
+  const settings = await pool.query(`SELECT cs.session_timeout_minutes FROM app_users u LEFT JOIN company_settings cs ON cs.company_id=u.company_id WHERE u.id=$1`,[userId]);
+  const configured = Number(settings.rows[0]?.session_timeout_minutes) || SESSION_DAYS * 1440;
+  const minutes = remember ? Math.max(configured, 30 * 1440) : configured;
+  const expires = new Date(Date.now() + minutes * 60000);
   await pool.query('INSERT INTO auth_sessions (user_id,token_hash,user_agent,ip_address,expires_at) VALUES ($1,$2,$3,$4,$5)', [userId, hashToken(token), req.get('user-agent') || '', req.ip, expires]);
-  setSessionCookie(res, token, remember);
+  res.cookie(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: minutes * 60000 });
 }
 export function requirePlatformOwner(req, res, next) {
   if (req.user?.role !== 'Platform Owner') return res.status(403).json({ error: 'Pristup je dozvoljen samo vlasniku platforme.' });
