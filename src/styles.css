@@ -237,6 +237,8 @@
 .notif-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .company-logo img{width:100%;height:100%;object-fit:contain;border-radius:12px;background:#fff}
 
+.auth-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:10px;background:#f7f9fc;color:#24364d;font-size:14px}.auth-loading svg{color:#1769d2}
+
 /* Demo mode banner (no backend/db connection) */
 .demo-mode-banner{display:flex;align-items:center;gap:9px;background:#fff3dc;color:#8a5c0f;font-size:10.5px;font-weight:600;padding:9px 24px;border-bottom:1px solid #f3ddaa}
 .demo-mode-banner svg{width:15px;flex:none}
