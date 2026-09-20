@@ -7,6 +7,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
 import nodemailer from 'nodemailer';
+import { authenticator } from 'otplib';
+import QRCode from 'qrcode';
+import crypto from 'crypto';
 import { pool } from './db.js';
 import { randomToken, hashToken, generateCode, normalizeEmail, hashPassword, verifyPassword, passwordValid, publicUser, createSession, clearSessionCookie, requireAuth, requirePlatformOwner, sendSecurityEmail } from './auth.js';
 
@@ -257,6 +260,29 @@ app.put('/api/auth/password', requireAuth, strictLimiter, async (req,res)=>{
  }catch(e){console.error(e);res.status(500).json({error:'Promjena lozinke nije uspjela.'})}
 });
 
+// ---------- Postavke radnog prostora ----------
+const workspaceDefaults={company_name:'',tax_id:'',address:'',city:'',phone:'',email:'',website:'',logo_data:null,currency:'EUR',tax_rate:17,invoice_prefix:'R-',offer_prefix:'PN-',payment_days:7,document_note:'',notify_new_job:true,notify_status_change:true,notify_payment:true,notify_low_stock:true,notify_maintenance:true,email_notifications:true,session_timeout_minutes:10080};
+async function ensureWorkspaceSettings(companyId){
+ const company=await pool.query('SELECT name FROM companies WHERE id=$1',[companyId]);
+ await pool.query(`INSERT INTO company_settings(company_id,company_name) VALUES($1,$2) ON CONFLICT(company_id) DO NOTHING`,[companyId,company.rows[0]?.name||'']);
+}
+async function workspaceAudit(req,action,metadata={}){await pool.query(`INSERT INTO company_audit_log(company_id,actor_user_id,action,metadata,ip_address) VALUES($1,$2,$3,$4,$5)`,[req.user.company_id,req.user.id,action,JSON.stringify(metadata),req.ip])}
+app.get('/api/settings/workspace',requireAuth,async(req,res)=>{try{await ensureWorkspaceSettings(req.user.company_id);const r=await pool.query('SELECT * FROM company_settings WHERE company_id=$1',[req.user.company_id]);res.json({...workspaceDefaults,...r.rows[0]})}catch(e){console.error(e);res.status(500).json({error:'Postavke nije moguće učitati.'})}});
+app.put('/api/settings/company',requireAuth,async(req,res)=>{try{
+ await ensureWorkspaceSettings(req.user.company_id);const b=req.body||{};const logo=b.logo_data;
+ if(logo!==undefined&&logo!==null&&logo!==''&&(!/^data:image\/(png|jpeg|webp);base64,/.test(logo)||logo.length>2800000))return res.status(400).json({error:'Logo nije validan ili je veći od 2 MB.'});
+ const r=await pool.query(`UPDATE company_settings SET company_name=$1,tax_id=$2,address=$3,city=$4,phone=$5,email=$6,website=$7,logo_data=$8,updated_at=now() WHERE company_id=$9 RETURNING *`,[String(b.company_name||'').trim(),String(b.tax_id||'').trim(),String(b.address||'').trim(),String(b.city||'').trim(),String(b.phone||'').trim(),normalizeEmail(b.email),String(b.website||'').trim(),logo||null,req.user.company_id]);
+ if(r.rows[0].company_name)await pool.query('UPDATE companies SET name=$1 WHERE id=$2',[r.rows[0].company_name,req.user.company_id]);await workspaceAudit(req,'company.settings.update',{fields:['company_name','tax_id','address','city','phone','email','website','logo_data']});res.json(r.rows[0]);
+ }catch(e){console.error(e);res.status(500).json({error:'Podaci firme nisu sačuvani.'})}});
+app.put('/api/settings/documents',requireAuth,async(req,res)=>{try{await ensureWorkspaceSettings(req.user.company_id);const b=req.body||{};const r=await pool.query(`UPDATE company_settings SET currency=$1,tax_rate=$2,invoice_prefix=$3,offer_prefix=$4,payment_days=$5,document_note=$6,updated_at=now() WHERE company_id=$7 RETURNING *`,[String(b.currency||'EUR').slice(0,5),Math.max(0,Number(b.tax_rate)||0),String(b.invoice_prefix||'R-').slice(0,15),String(b.offer_prefix||'PN-').slice(0,15),Math.max(0,Number(b.payment_days)||0),String(b.document_note||'').slice(0,1000),req.user.company_id]);await workspaceAudit(req,'document.settings.update',b);res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:'Postavke dokumenata nisu sačuvane.'})}});
+app.put('/api/settings/notifications',requireAuth,async(req,res)=>{try{await ensureWorkspaceSettings(req.user.company_id);const b=req.body||{};const keys=['notify_new_job','notify_status_change','notify_payment','notify_low_stock','notify_maintenance','email_notifications'];const vals=keys.map(k=>b[k]!==false);const r=await pool.query(`UPDATE company_settings SET notify_new_job=$1,notify_status_change=$2,notify_payment=$3,notify_low_stock=$4,notify_maintenance=$5,email_notifications=$6,updated_at=now() WHERE company_id=$7 RETURNING *`,[...vals,req.user.company_id]);await workspaceAudit(req,'notification.settings.update',b);res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:'Postavke obavijesti nisu sačuvane.'})}});
+app.post('/api/settings/notifications/test',requireAuth,strictLimiter,async(req,res)=>{const result=await sendSecurityEmail({to:req.user.email,subject:'Testna TeloPak Flux obavijest',message:'Ovo je testna obavijest iz postavki vašeg radnog prostora.'});await workspaceAudit(req,'notification.test',{delivered:result.delivered});res.status(result.delivered?200:503).json(result.delivered?{ok:true}:{error:result.reason||'Testni email nije poslan.'})});
+app.put('/api/settings/security',requireAuth,async(req,res)=>{try{await ensureWorkspaceSettings(req.user.company_id);const minutes=Math.min(43200,Math.max(15,Number(req.body?.session_timeout_minutes)||10080));const r=await pool.query('UPDATE company_settings SET session_timeout_minutes=$1,updated_at=now() WHERE company_id=$2 RETURNING *',[minutes,req.user.company_id]);await workspaceAudit(req,'security.settings.update',{session_timeout_minutes:minutes});res.json(r.rows[0])}catch(e){res.status(500).json({error:'Sigurnosne postavke nisu sačuvane.'})}});
+app.get('/api/settings/audit',requireAuth,async(req,res)=>{try{const r=await pool.query(`SELECT a.id,a.action,a.metadata,a.ip_address,a.created_at,u.name actor FROM company_audit_log a LEFT JOIN app_users u ON u.id=a.actor_user_id WHERE a.company_id=$1 ORDER BY a.created_at DESC LIMIT 50`,[req.user.company_id]);res.json(r.rows)}catch(e){res.status(500).json({error:'Dnevnik aktivnosti nije moguće učitati.'})}});
+app.post('/api/auth/2fa/setup',requireAuth,strictLimiter,async(req,res)=>{try{const secret=authenticator.generateSecret();const issuer='TeloPak Flux';const uri=authenticator.keyuri(req.user.email,issuer,secret);const qr=await QRCode.toDataURL(uri);await pool.query(`DELETE FROM auth_tokens WHERE user_id=$1 AND purpose='2fa_setup'`,[req.user.id]);await pool.query(`INSERT INTO auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,'2fa_setup',$2,now()+interval '10 minutes')`,[req.user.id,secret]);res.json({secret,qr})}catch(e){console.error(e);res.status(500).json({error:'2FA postavljanje nije uspjelo.'})}});
+app.post('/api/auth/2fa/enable',requireAuth,strictLimiter,async(req,res)=>{try{const code=String(req.body?.code||'').replace(/\s/g,'');const t=await pool.query(`SELECT * FROM auth_tokens WHERE user_id=$1 AND purpose='2fa_setup' AND used_at IS NULL AND expires_at>now() ORDER BY id DESC LIMIT 1`,[req.user.id]);if(!t.rows[0]||!authenticator.check(code,t.rows[0].token_hash))return res.status(400).json({error:'Kod iz autentikator aplikacije nije ispravan.'});const backup=Array.from({length:8},()=>crypto.randomBytes(4).toString('hex').toUpperCase());const hashes=backup.map(hashToken);await pool.query(`UPDATE app_users SET two_factor_enabled=true,two_factor_secret=$1,two_factor_backup_hashes=$2,updated_at=now() WHERE id=$3`,[t.rows[0].token_hash,JSON.stringify(hashes),req.user.id]);await pool.query('UPDATE auth_tokens SET used_at=now() WHERE id=$1',[t.rows[0].id]);await workspaceAudit(req,'security.2fa.enabled');res.json({ok:true,backupCodes:backup})}catch(e){console.error(e);res.status(500).json({error:'2FA nije aktivirana.'})}});
+app.post('/api/auth/2fa/disable',requireAuth,strictLimiter,async(req,res)=>{try{const password=String(req.body?.password||'');const u=await pool.query('SELECT password_hash FROM app_users WHERE id=$1',[req.user.id]);if(!await verifyPassword(password,u.rows[0].password_hash))return res.status(401).json({error:'Lozinka nije ispravna.'});await pool.query(`UPDATE app_users SET two_factor_enabled=false,two_factor_secret=NULL,two_factor_backup_hashes='[]'::jsonb,updated_at=now() WHERE id=$1`,[req.user.id]);await workspaceAudit(req,'security.2fa.disabled');res.json({ok:true})}catch(e){res.status(500).json({error:'2FA nije isključena.'})}});
+
 // ---------- Platform Owner konzola ----------
 app.get('/api/owner/overview', requireAuth, requirePlatformOwner, async (req,res)=>{
   try{
@@ -390,6 +416,10 @@ app.get('/api/pdf/invoice/:id', requireAuth, async (req, res) => {
     const doc = new PDFDocument({ margin: 50 });
     doc.pipe(res);
     brandHeader(doc, `Račun ${inv.no || ''}`);
+    const companySettings=await pool.query('SELECT * FROM company_settings WHERE company_id=$1',[req.user.company_id]);
+    const cfg=companySettings.rows[0]||{};
+    if(cfg.company_name) kv(doc,'Izdavalac:',cfg.company_name);
+    if(cfg.tax_id) kv(doc,'PDV broj:',cfg.tax_id);
     kv(doc, 'Klijent:', inv.client);
     kv(doc, 'Datum izdavanja:', inv.issued);
     kv(doc, 'Rok plaćanja:', inv.due);
@@ -398,7 +428,7 @@ app.get('/api/pdf/invoice/:id', requireAuth, async (req, res) => {
     doc.fontSize(13).fillColor('#111a3f').font('Helvetica-Bold').text(`Ukupan iznos: ${inv.amount || '—'}`);
     doc.fontSize(11).fillColor('#1c2b3d').font('Helvetica').text(`Uplaćeno: ${inv.paid || '0,00 €'}`);
     doc.moveDown(2);
-    doc.fontSize(9).fillColor('#8896a6').text('Hvala na ukazanom povjerenju. Molimo izvršite uplatu do naznačenog roka.');
+    doc.fontSize(9).fillColor('#8896a6').text(cfg.document_note||'Hvala na ukazanom povjerenju. Molimo izvršite uplatu do naznačenog roka.');
     doc.end();
   } catch (err) {
     console.error(err);
@@ -416,6 +446,10 @@ app.get('/api/pdf/offer/:id', requireAuth, async (req, res) => {
     const doc = new PDFDocument({ margin: 50 });
     doc.pipe(res);
     brandHeader(doc, `Ponuda ${off.no || ''}`);
+    const companySettings=await pool.query('SELECT * FROM company_settings WHERE company_id=$1',[req.user.company_id]);
+    const cfg=companySettings.rows[0]||{};
+    if(cfg.company_name) kv(doc,'Izdavalac:',cfg.company_name);
+    if(cfg.tax_id) kv(doc,'PDV broj:',cfg.tax_id);
     kv(doc, 'Klijent:', off.client);
     kv(doc, 'Datum ponude:', off.date);
     kv(doc, 'Važi do:', off.valid);
@@ -423,7 +457,7 @@ app.get('/api/pdf/offer/:id', requireAuth, async (req, res) => {
     doc.moveDown(0.6);
     doc.fontSize(13).fillColor('#111a3f').font('Helvetica-Bold').text(`Ukupan iznos: ${off.amount || '—'}`);
     doc.moveDown(2);
-    doc.fontSize(9).fillColor('#8896a6').text('Ponuda vrijedi do naznačenog datuma. Za sva pitanja slobodno nas kontaktirajte.');
+    doc.fontSize(9).fillColor('#8896a6').text(cfg.document_note||'Ponuda vrijedi do naznačenog datuma. Za sva pitanja slobodno nas kontaktirajte.');
     doc.end();
   } catch (err) {
     console.error(err);
