@@ -68,8 +68,10 @@ function crud(table, defaults = {}) {
       const cols = Object.keys(data);
       if (!cols.length) return res.status(400).json({ error: 'Nema polja za izmjenu.' });
       const set = cols.map((c, i) => `${c}=$${i + 1}`).join(',');
+      const idPlaceholder = '$' + (cols.length + 1);
+      const companyPlaceholder = '$' + (cols.length + 2);
       const r = await pool.query(
-        `UPDATE ${table} SET ${set} WHERE id=${cols.length + 1} AND company_id=${cols.length + 2} RETURNING *`,
+        `UPDATE ${table} SET ${set} WHERE id=${idPlaceholder} AND company_id=${companyPlaceholder} RETURNING *`,
         [...cols.map(c => data[c]), req.params.id, req.user.company_id]
       );
       if (!r.rows[0]) return res.status(404).json({ error: 'Zapis nije pronađen.' });
@@ -225,19 +227,19 @@ app.put('/api/auth/profile', requireAuth, async (req,res)=>{
   const sets=[],vals=[];let i=1;
   if(req.body.name!==undefined){
    if(!String(req.body.name).trim()) return res.status(400).json({error:'Ime i prezime su obavezni.'});
-   sets.push(`name=${i++}`);vals.push(String(req.body.name).trim().slice(0,120));
+   sets.push('name=$'+(i++));vals.push(String(req.body.name).trim().slice(0,120));
   }
-  if(req.body.phone!==undefined){sets.push(`phone=${i++}`);vals.push(String(req.body.phone||'').slice(0,40));}
+  if(req.body.phone!==undefined){sets.push('phone=$'+(i++));vals.push(String(req.body.phone||'').slice(0,40));}
   if(req.body.avatar_data!==undefined){
    const v=req.body.avatar_data;
    const validAvatar=v==null||v===''||(/^data:image\/(png|jpeg|webp);base64,/.test(v)&&v.length<1400000);
    if(!validAvatar) return res.status(400).json({error:'Slika nije validna ili je prevelika (maksimalno 1 MB).'});
-   sets.push(`avatar_data=${i++}`);vals.push(v||null);
+   sets.push('avatar_data=$'+(i++));vals.push(v||null);
   }
   if(!sets.length) return res.status(400).json({error:'Nema izmjena za sačuvati.'});
   sets.push('updated_at=now()');
   vals.push(req.user.id);
-  const r=await pool.query(`UPDATE app_users SET ${sets.join(',')} WHERE id=${i} RETURNING *`,vals);
+  const r=await pool.query(`UPDATE app_users SET ${sets.join(',')} WHERE id=$${i} RETURNING *`,vals);
   res.json({user:publicUser(r.rows[0])});
  }catch(e){console.error(e);res.status(500).json({error:'Ažuriranje profila nije uspjelo.'})}
 });
@@ -303,15 +305,36 @@ app.delete('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(
     res.json({ok:true});
   }catch(e){console.error(e);res.status(500).json({error:'Brisanje firme nije uspjelo.'})}
 });
-app.get('/api/owner/users', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT u.id,u.name,u.email,u.role,u.status,u.email_verified,u.created_at,c.name company FROM app_users u LEFT JOIN companies c ON c.id=u.company_id ORDER BY u.created_at DESC LIMIT 250`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati korisnike.'})}});
+app.get('/api/owner/users', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT u.id,u.name,u.email,u.phone,u.role,u.status,u.email_verified,u.created_at,c.name company FROM app_users u LEFT JOIN companies c ON c.id=u.company_id ORDER BY u.created_at DESC LIMIT 250`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati korisnike.'})}});
 app.put('/api/owner/users/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
   try{
-    const {role,status}=req.body||{};
-    const r=await pool.query(`UPDATE app_users SET role=COALESCE($1,role),status=COALESCE($2,status),updated_at=now() WHERE id=$3 RETURNING id,name,email,role,status`,[role||null,status||null,req.params.id]);
+    const b=req.body||{};
+    const sets=[],vals=[];let i=1;
+    if(b.name!==undefined){
+      if(!String(b.name).trim()) return res.status(400).json({error:'Ime je obavezno.'});
+      sets.push('name=$'+(i++));vals.push(String(b.name).trim().slice(0,120));
+    }
+    if(b.email!==undefined){
+      const email=normalizeEmail(b.email);
+      if(!email||!email.includes('@')) return res.status(400).json({error:'Email adresa nije validna.'});
+      sets.push('email=$'+(i++));vals.push(email);
+    }
+    if(b.phone!==undefined){sets.push('phone=$'+(i++));vals.push(String(b.phone||'').slice(0,40));}
+    if(b.role!==undefined){sets.push('role=$'+(i++));vals.push(b.role);}
+    if(b.status!==undefined){sets.push('status=$'+(i++));vals.push(b.status);}
+    if(b.email_verified!==undefined){sets.push('email_verified=$'+(i++));vals.push(!!b.email_verified);}
+    if(!sets.length) return res.status(400).json({error:'Nema izmjena za sačuvati.'});
+    sets.push('updated_at=now()');
+    const idPlaceholder='$'+i;
+    vals.push(req.params.id);
+    const r=await pool.query(`UPDATE app_users SET ${sets.join(',')} WHERE id=${idPlaceholder} RETURNING id,name,email,phone,role,status,email_verified,created_at,company_id`,vals);
     if(!r.rows[0]) return res.status(404).json({error:'Korisnik nije pronađen.'});
-    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'user.update','user',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify({role,status}),req.ip]);
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'user.update','user',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify(b),req.ip]);
     res.json(r.rows[0]);
-  }catch(e){console.error(e);res.status(500).json({error:'Izmjena korisnika nije uspjela.'})}
+  }catch(e){
+    if(e && e.code==='23505') return res.status(409).json({error:'Email adresa je već u upotrebi.'});
+    console.error(e);res.status(500).json({error:'Izmjena korisnika nije uspjela.'})
+  }
 });
 app.delete('/api/owner/users/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
   try{
