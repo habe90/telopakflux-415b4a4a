@@ -38,9 +38,15 @@ export async function requireAuth(req, res, next) {
 }
 export async function sendSecurityEmail({ to, subject, message }) {
   const hasSmtp = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
-  if (!hasSmtp) { console.log('[SECURITY EMAIL]', { to, subject, message }); return false; }
-  const nodemailer = (await import('nodemailer')).default;
-  const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: Number(process.env.SMTP_PORT) === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
-  await transporter.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, text: message });
-  return true;
+  if (!hasSmtp) { console.log('[SECURITY EMAIL — SMTP NIJE PODEŠEN, SIMULACIJA]', { to, subject, message }); return { delivered: false, reason: 'SMTP nije podešen u env varijablama servera.' }; }
+  try {
+    const nodemailer = (await import('nodemailer')).default;
+    const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: Number(process.env.SMTP_PORT) === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
+    const info = await transporter.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, text: message });
+    console.log('[SECURITY EMAIL — POSLANO]', { to, subject, messageId: info?.messageId, response: info?.response });
+    return { delivered: true };
+  } catch (err) {
+    console.error('[SECURITY EMAIL — GREŠKA PRI SLANJU]', err?.message || err);
+    return { delivered: false, reason: err?.message || 'Nepoznata SMTP greška.' };
+  }
 }
