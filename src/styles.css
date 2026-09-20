@@ -392,6 +392,7 @@
 @media(max-width:1000px){.owner-settings-layout{grid-template-columns:1fr}.owner-settings-side{display:grid;grid-template-columns:1fr 1fr}.owner-detail-form{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.owner-modal-body{padding:0 18px 20px}.owner-company-hero{margin:0 -18px 18px;padding:20px 18px}.owner-settings-side{display:flex}.owner-settings-fields,.owner-detail-form{grid-template-columns:1fr}.owner-brand-upload,.owner-brand-upload.favicon{grid-template-columns:1fr}.owner-brand-preview{max-width:240px}.owner-detail-users>div{grid-template-columns:1fr}.owner-detail-users select{width:100%}.owner-settings-save{position:static;align-items:stretch;flex-direction:column}.owner-settings-save .primary{justify-content:center}}
 
+.profile-modal-top .text-link{margin-top:6px;font-size:11px;padding:0}
 .auth-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:10px;background:#f7f9fc;color:#24364d;font-size:14px}.auth-loading svg{color:#1769d2}
 
 /* Demo mode banner (no backend/db connection) */
