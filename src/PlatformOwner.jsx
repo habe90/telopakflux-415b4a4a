@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState} from 'react';
-import {Building2,Users,WalletCards,Activity,Search,ShieldCheck,Server,Database,Mail,CheckCircle2,Clock3,AlertTriangle,RefreshCw,ExternalLink,X,Plus,Trash2,Save,Image,Palette,Globe2,ToggleLeft,Upload,BriefcaseBusiness,FileText,ReceiptText,UserCog} from 'lucide-react';
+import {Building2,Users,WalletCards,Activity,Search,ShieldCheck,Server,Database,Mail,CheckCircle2,Clock3,AlertTriangle,RefreshCw,ExternalLink,X,Plus,Trash2,Save,Image,Palette,Globe2,ToggleLeft,Upload,BriefcaseBusiness,FileText,ReceiptText,UserCog,Pencil,BadgeCheck} from 'lucide-react';
 const api=async(path,opts)=>{const r=await fetch(`/api/owner/${path}`,{credentials:'include',headers:opts?.body?{'Content-Type':'application/json'}:undefined,...opts});if(r.status===413)throw new Error('Fajl je prevelik za slanje. Odaberite manju sliku (do 1 MB).');const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Greška prilikom obrade zahtjeva (HTTP ${r.status}).`);return d};
 const money=n=>new Intl.NumberFormat('bs-BA',{style:'currency',currency:'EUR'}).format(Number(n||0));
 const s=v=>(v===null||v===undefined)?'':String(v);
@@ -50,6 +50,26 @@ export function OwnerSettings({onBrandChange}){
   <div className="owner-settings-side"><section className="owner-settings-card"><div className="owner-settings-title"><span><ToggleLeft/></span><div><h3>Globalne kontrole</h3><p>Primjenjuju se na cijelu platformu.</p></div></div><div className="owner-settings-toggles"><SettingToggle checked={!!f.registrations_enabled} onChange={v=>set('registrations_enabled',v)} title="Nove registracije" text="Dozvoli firmama da samostalno otvore nalog."/><SettingToggle checked={!!f.maintenance_mode} onChange={v=>set('maintenance_mode',v)} title="Maintenance režim" text="Prikaži obavijest da se izvode radovi."/></div></section><section className="owner-settings-card owner-settings-help"><Globe2/><h3>Javne postavke</h3><p>Sačuvani naziv, logo, favicon i boja učitavaju se i prije prijave korisnika.</p></section></div>
   <div className="owner-settings-save">{error&&<span className="owner-save-error"><AlertTriangle/>{error}</span>}{saved&&<span className="owner-save-success"><CheckCircle2/>{saved}</span>}<button className="primary" disabled={busy}><Save/>{busy?'Čuvanje...':'Sačuvaj postavke'}</button></div>
  </form></>;
+}
+function UserEditModal({user,onClose,onSaved}){
+ const[f,setF]=useState({name:user.name||'',email:user.email||'',phone:user.phone||'',role:user.role||'Administrator',status:user.status||'Aktivan',email_verified:!!user.email_verified});
+ const[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const set=(k,v)=>setF(x=>({...x,[k]:v}));
+ const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{await api(`users/${user.id}`,{method:'PUT',body:JSON.stringify(f)});onSaved();onClose()}catch(x){setError(x.message)}finally{setBusy(false)}};
+ return <Modal title="Uredi korisnika" onClose={onClose}>
+  <form onSubmit={submit} className="owner-form">
+   <label>Ime i prezime<input value={f.name} onChange={e=>set('name',e.target.value)} required/></label>
+   <label>Email adresa<input type="email" value={f.email} onChange={e=>set('email',e.target.value)} required/></label>
+   <label>Telefon<input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="Nije unesen"/></label>
+   <div className="owner-form-row">
+    <label>Uloga<select value={f.role} onChange={e=>set('role',e.target.value)}><option>Administrator</option><option>Menadžer</option><option>Radnik</option><option>Platform Owner</option></select></label>
+    <label>Status<select value={f.status} onChange={e=>set('status',e.target.value)}><option>Aktivan</option><option>Neaktivan</option></select></label>
+   </div>
+   <SettingToggle checked={f.email_verified} onChange={v=>set('email_verified',v)} title="Email ručno verifikovan" text="Uključite da odmah označite email kao potvrđen, bez slanja koda korisniku."/>
+   {error&&<p className="owner-form-error"><AlertTriangle/>{error}</p>}
+   <button className="primary owner-form-submit" disabled={busy}>{busy?'Čuvanje...':'Sačuvaj izmjene'}</button>
+  </form>
+ </Modal>;
 }
 function CompanyDetail({id,onClose,onChanged}){
  const[data,setData]=useState(null),[error,setError]=useState('');
@@ -122,20 +142,23 @@ export function OwnerCompanies(){
   </>;
 }
 export function OwnerUsers(){
- const[rows,setRows]=useState([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false);
+ const[rows,setRows]=useState([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false),[editUser,setEditUser]=useState(null);
  const load=()=>api('users').then(d=>setRows(Array.isArray(d)?d:[])).catch(e=>setError(e.message)).finally(()=>setReady(true));
  useEffect(()=>{load()},[]);
  const visible=useMemo(()=>rows.filter(x=>`${s(x.name)} ${s(x.email)} ${s(x.company)}`.toLowerCase().includes(search.toLowerCase())),[rows,search]);
- const updateUser=async(u,patch)=>{try{await api(`users/${u.id}`,{method:'PUT',body:JSON.stringify(patch)});load()}catch(e){}};
+ const updateUser=async(u,patch)=>{try{await api(`users/${u.id}`,{method:'PUT',body:JSON.stringify(patch)});load()}catch(e){alert(e.message)}};
+ const verifyUser=u=>updateUser(u,{email_verified:true});
  const deleteUser=async u=>{if(!window.confirm(`Obrisati korisnika ${u.name}?`))return;try{await api(`users/${u.id}`,{method:'DELETE'});load()}catch(e){alert(e.message)}};
  if(error)return <><div className="owner-head"><div><p>GLOBAL USERS</p><h1>Korisnici platforme</h1></div></div><ErrorBox error={error}/></>;
  return <><div className="owner-head"><div><p>GLOBAL USERS</p><h1>Korisnici platforme</h1><span>Pregled svih vlasnika firmi i članova njihovih timova.</span></div></div>
   <section className="owner-panel"><div className="owner-table-tools"><div className="owner-search"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pretraži korisnika, email ili firmu..."/></div><span>{visible.length} korisnika</span></div>
    {!ready?<Skeleton/>:<div className="table-wrap"><table className="owner-table"><thead><tr><th>Korisnik</th><th>Firma</th><th>Uloga</th><th>Email verifikovan</th><th>Status</th><th>Registracija</th><th>Akcije</th></tr></thead><tbody>
     {!visible.length&&<tr><td colSpan={7} className="empty-row">Nema korisnika za prikaz.</td></tr>}
-    {visible.map(u=><tr key={u.id}><td><div className="owner-company-cell"><span>{initials2(u.name)}</span><div><strong>{s(u.name)||'Bez imena'}</strong><small>{s(u.email)}</small></div></div></td><td>{u.company||'Platforma'}</td><td><select value={u.role} onChange={e=>updateUser(u,{role:e.target.value})}><option>Administrator</option><option>Menadžer</option><option>Radnik</option><option>Platform Owner</option></select></td><td>{u.email_verified?<CheckCircle2 className="owner-check"/>:<Clock3 className="owner-wait"/>}</td><td><select value={u.status} onChange={e=>updateUser(u,{status:e.target.value})}><option>Aktivan</option><option>Neaktivan</option></select></td><td>{fmtDate(u.created_at)}</td><td><button className="owner-action danger" onClick={()=>deleteUser(u)}><Trash2/></button></td></tr>)}
+    {visible.map(u=><tr key={u.id}><td><div className="owner-company-cell"><span>{initials2(u.name)}</span><div><strong>{s(u.name)||'Bez imena'}</strong><small>{s(u.email)}</small></div></div></td><td>{u.company||'Platforma'}</td><td><select value={u.role} onChange={e=>updateUser(u,{role:e.target.value})}><option>Administrator</option><option>Menadžer</option><option>Radnik</option><option>Platform Owner</option></select></td><td>{u.email_verified?<span className="owner-verified-tag"><CheckCircle2/> Verifikovan</span>:<button className="owner-action verify" onClick={()=>verifyUser(u)}><BadgeCheck/> Verifikuj ručno</button>}</td><td><select value={u.status} onChange={e=>updateUser(u,{status:e.target.value})}><option>Aktivan</option><option>Neaktivan</option></select></td><td>{fmtDate(u.created_at)}</td><td className="owner-row-actions"><button className="owner-action" onClick={()=>setEditUser(u)}><Pencil/> Uredi</button><button className="owner-action danger" onClick={()=>deleteUser(u)}><Trash2/></button></td></tr>)}
    </tbody></table></div>}
-  </section></>;
+  </section>
+  {editUser&&<UserEditModal user={editUser} onClose={()=>setEditUser(null)} onSaved={load}/>}
+  </>;
 }
 export function OwnerAudit(){
  const[rows,setRows]=useState([]),[error,setError]=useState(''),[ready,setReady]=useState(false);
