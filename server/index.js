@@ -94,6 +94,10 @@ function crud(table, defaults = {}) {
 }
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', name: 'TeloPak Flux API' }));
+app.get('/api/public/settings', async(req,res)=>{
+  try{const r=await pool.query(`SELECT app_name,tagline,support_email,primary_color,logo_data,favicon_data,locale,registrations_enabled,maintenance_mode FROM platform_settings WHERE id=1`);res.json(r.rows[0]||{})}
+  catch(e){res.json({app_name:'TeloPak Flux',primary_color:'#1769d2',registrations_enabled:true,maintenance_mode:false})}
+});
 
 // Dijagnostika SMTP konekcije — ne otkriva lozinku, samo status konekcije. Korisno za
 // provjeru da li su env varijable stvarno stigle do kontejnera i da li Zoho prihvata auth.
@@ -230,7 +234,7 @@ app.get('/api/owner/companies', requireAuth, requirePlatformOwner, async (req,re
   try{const r=await pool.query(`SELECT c.*, COUNT(DISTINCT u.id)::int users, COUNT(DISTINCT j.id)::int jobs FROM companies c LEFT JOIN app_users u ON u.company_id=c.id AND u.role<>'Platform Owner' LEFT JOIN jobs j ON j.company_id=c.id GROUP BY c.id ORDER BY c.created_at DESC`);res.json(r.rows)}catch(e){console.error(e);res.status(500).json({error:'Nije moguće učitati firme.'})}
 });
 app.put('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
-  try{const {status,plan,monthly_price}=req.body||{};const r=await pool.query(`UPDATE companies SET status=COALESCE($1,status),plan=COALESCE($2,plan),monthly_price=COALESCE($3,monthly_price) WHERE id=$4 RETURNING *`,[status||null,plan||null,monthly_price===undefined?null:Number(monthly_price),req.params.id]);await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.update','company',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify({status,plan,monthly_price}),req.ip]);res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:'Izmjena firme nije uspjela.'})}
+  try{const {name,industry,status,plan,monthly_price,trial_ends_at}=req.body||{};const r=await pool.query(`UPDATE companies SET name=COALESCE($1,name),industry=COALESCE($2,industry),status=COALESCE($3,status),plan=COALESCE($4,plan),monthly_price=COALESCE($5,monthly_price),trial_ends_at=COALESCE($6,trial_ends_at) WHERE id=$7 RETURNING *`,[name||null,industry===undefined?null:industry,status||null,plan||null,monthly_price===undefined?null:Number(monthly_price),trial_ends_at||null,req.params.id]);await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.update','company',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify({name,industry,status,plan,monthly_price,trial_ends_at}),req.ip]);res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:'Izmjena firme nije uspjela.'})}
 });
 app.post('/api/owner/companies', requireAuth, requirePlatformOwner, async(req,res)=>{
   try{
@@ -283,6 +287,18 @@ app.delete('/api/owner/users/:id', requireAuth, requirePlatformOwner, async(req,
   }catch(e){console.error(e);res.status(500).json({error:'Brisanje korisnika nije uspjelo.'})}
 });
 app.get('/api/owner/audit', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT a.*,u.email actor FROM platform_audit_log a LEFT JOIN app_users u ON u.id=a.actor_user_id ORDER BY a.created_at DESC LIMIT 100`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati audit zapis.'})}});
+app.get('/api/owner/settings',requireAuth,requirePlatformOwner,async(req,res)=>{try{const r=await pool.query('SELECT * FROM platform_settings WHERE id=1');res.json(r.rows[0])}catch(e){res.status(500).json({error:'Nije moguće učitati postavke platforme.'})}});
+app.put('/api/owner/settings',requireAuth,requirePlatformOwner,async(req,res)=>{
+ try{
+  const {app_name,tagline,support_email,primary_color,logo_data,favicon_data,locale,registrations_enabled,maintenance_mode}=req.body||{};
+  const validImage=v=>v==null||v===''||(/^data:image\/(png|jpeg|webp|svg\+xml|x-icon|vnd\.microsoft\.icon);base64,/.test(v)&&v.length<1400000);
+  if(!validImage(logo_data)||!validImage(favicon_data))return res.status(400).json({error:'Logo ili favicon nisu validni ili su preveliki (maksimalno 1 MB).'});
+  const color=/^#[0-9a-fA-F]{6}$/.test(primary_color||'')?primary_color:'#1769d2';
+  const r=await pool.query(`UPDATE platform_settings SET app_name=$1,tagline=$2,support_email=$3,primary_color=$4,logo_data=$5,favicon_data=$6,locale=$7,registrations_enabled=$8,maintenance_mode=$9,updated_at=now() WHERE id=1 RETURNING *`,[String(app_name||'TeloPak Flux').slice(0,80),String(tagline||'').slice(0,160),String(support_email||'').slice(0,160),color,logo_data||null,favicon_data||null,locale||'bs-BA',registrations_enabled!==false,!!maintenance_mode]);
+  await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'platform.settings.update','platform','1',$2,$3)`,[req.user.id,JSON.stringify({app_name,primary_color,locale,registrations_enabled,maintenance_mode}),req.ip]);
+  res.json(r.rows[0]);
+ }catch(e){console.error(e);res.status(500).json({error:'Čuvanje postavki nije uspjelo.'})}
+});
 
 app.use('/api/clients', requireAuth, crud('clients', { type: 'Fizičko lice', status: 'Aktivan', address: '', note: '', jobs: 0, value: '0,00 €' }));
 app.use('/api/jobs', requireAuth, crud('jobs', { priority: 'Standardno', status: 'Zakazano', city: '', amount: '—' }));
