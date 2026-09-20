@@ -15,7 +15,7 @@ export function passwordValid(password = '') {
   return password.length >= 12 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 export function publicUser(row) {
-  return { id: row.id, name: row.name, email: row.email, phone: row.phone || '', role: row.role, companyId: row.company_id, emailVerified: !!row.email_verified, twoFactorEnabled: !!row.two_factor_enabled };
+  return { id: row.id, name: row.name, email: row.email, phone: row.phone || '', role: row.role, isPlatformOwner: row.role === 'Platform Owner', companyId: row.company_id, emailVerified: !!row.email_verified, twoFactorEnabled: !!row.two_factor_enabled };
 }
 export function setSessionCookie(res, token, remember = false) {
   res.cookie(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: remember ? 30 * 86400000 : SESSION_DAYS * 86400000 });
@@ -26,6 +26,10 @@ export async function createSession(userId, req, res, remember = false) {
   const expires = new Date(Date.now() + (remember ? 30 : SESSION_DAYS) * 86400000);
   await pool.query('INSERT INTO auth_sessions (user_id,token_hash,user_agent,ip_address,expires_at) VALUES ($1,$2,$3,$4,$5)', [userId, hashToken(token), req.get('user-agent') || '', req.ip, expires]);
   setSessionCookie(res, token, remember);
+}
+export function requirePlatformOwner(req, res, next) {
+  if (req.user?.role !== 'Platform Owner') return res.status(403).json({ error: 'Pristup je dozvoljen samo vlasniku platforme.' });
+  next();
 }
 export async function requireAuth(req, res, next) {
   try {
