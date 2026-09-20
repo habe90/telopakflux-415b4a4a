@@ -4,7 +4,25 @@ const api=async(path,body)=>{const r=await fetch(`/api/auth/${path}`,{method:'PO
 function BrandPanel({quote}){return <div className="auth-brand"><div className="auth-brand-top brand-logo-wrap"><img src={import.meta.env.BASE_URL+'telopak-flux-logo.svg'} className="brand-logo-image"/><span>Cijeli posao. Na jednom mjestu.</span></div><div className="auth-brand-mid"><h1>Manje administracije.<br/>Više posla.</h1><p>Klijenti, ponude, raspored, računi i materijal — sve povezano u sigurnom poslovnom sistemu.</p><ul><li><CheckCircle2/> Brz i organizovan rad</li><li><ShieldCheck/> Zaštićeni poslovni podaci</li><li><Zap/> Raspored i naplata na jednom mjestu</li></ul></div><div className="auth-brand-bottom"><p>„{quote}“</p></div></div>}
 function Shell({children,quote}){return <div className="auth-page"><BrandPanel quote={quote}/><div className="auth-form-wrap"><div className="auth-form"><div className="auth-mobile-logo"><img src={import.meta.env.BASE_URL+'telopak-flux-logo.svg'}/></div>{children}</div></div></div>}
 function ErrorBox({error}){return error?<p className="otp-error"><AlertTriangle/> {error}</p>:null}
-function OtpInputs({value,setValue}){const refs=useRef([]);return <div className="otp-inputs">{value.map((d,i)=><input key={i} ref={e=>refs.current[i]=e} value={d} inputMode="numeric" maxLength={1} autoFocus={i===0} onChange={e=>{const n=[...value];n[i]=e.target.value.replace(/\D/g,'').slice(-1);setValue(n);if(n[i])refs.current[i+1]?.focus()}} onKeyDown={e=>{if(e.key==='Backspace'&&!value[i])refs.current[i-1]?.focus()}}/>)}</div>}
+function OtpInputs({value,setValue}){
+ const refs=useRef([]);
+ const fillFrom=digits=>{
+  if(!digits.length)return;
+  const n=[...value];
+  digits.forEach((d,i)=>{if(i<n.length)n[i]=d;});
+  setValue(n);
+  const nextIndex=Math.min(digits.length,value.length-1);
+  refs.current[nextIndex]?.focus();
+ };
+ const handlePaste=e=>{
+  e.preventDefault();
+  const text=(e.clipboardData||window.clipboardData).getData('text');
+  fillFrom(text.replace(/\D/g,'').slice(0,value.length).split(''));
+ };
+ return <div className="otp-inputs" onPaste={handlePaste}>{value.map((d,i)=><input key={i} ref={e=>refs.current[i]=e} value={d} inputMode="numeric" maxLength={1} autoFocus={i===0}
+   onChange={e=>{const raw=e.target.value.replace(/\D/g,'');if(raw.length>1){fillFrom(raw.split(''));return}const n=[...value];n[i]=raw.slice(-1);setValue(n);if(n[i])refs.current[i+1]?.focus()}}
+   onKeyDown={e=>{if(e.key==='Backspace'&&!value[i])refs.current[i-1]?.focus()}}/>)}</div>;
+}
 export function PasswordStrength({value}){if(!value)return null;let s=0;if(value.length>=12)s++;if(/[A-Z]/.test(value)&&/[a-z]/.test(value))s++;if(/\d/.test(value))s++;if(/[^A-Za-z0-9]/.test(value))s++;return <div className="pw-strength"><div className="pw-bars">{[0,1,2,3].map(i=><span key={i} className={i<s?(s<3?'mid':'strong'):''}/>)}</div><small>{s<2?'Slaba':s<4?'Solidna':'Jaka'}</small></div>}
 function DeliveryWarning({note}){return note?<p className="otp-warning"><AlertTriangle/> Email trenutno nije stvarno poslan ({note}). Kod je zabilježen samo u serverskim logovima — obratite se administratoru.</p>:null}
 export function Login({onLogin,goRegister,goForgot}){const[step,setStep]=useState('login'),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[show,setShow]=useState(false),[otp,setOtp]=useState(Array(6).fill('')),[remember,setRemember]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false),[deliveryNote,setDeliveryNote]=useState('');
