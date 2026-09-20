@@ -11,7 +11,7 @@ import {
 import { Login, Register, ForgotPassword, AcceptInvite, PasswordStrength } from './Auth';
 import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule, StockModule, MaintenanceModule, ReportsModule, SettingsModule, exportToPDF } from './Modules';
 import AIAssistant from './AIAssistant';
-import { OwnerOverview, OwnerCompanies, OwnerUsers, OwnerAudit } from './PlatformOwner';
+import { OwnerOverview, OwnerCompanies, OwnerUsers, OwnerAudit, OwnerSettings } from './PlatformOwner';
 import { DataProvider, useData } from './store';
 
 const navItems = [
@@ -21,7 +21,7 @@ const navItems = [
 ];
 const ownerNavItems=[
  ['Owner pregled',LayoutDashboard],['Firme',Building2],['Svi korisnici',Users],
- ['Pretplate',CreditCard],['Sistem',Server],['Audit zapis',ScrollText]
+ ['Pretplate',CreditCard],['Sistem',Server],['Audit zapis',ScrollText],['Postavke aplikacije',Settings]
 ];
 
 const jobs = [
@@ -47,7 +47,7 @@ const teamUsersSeed = [
  {id:5,name:'Nikola Babić',email:'nikola@telopak.ba',phone:'+387 61 555 666',role:'Radnik na terenu',status:'Neaktivan',joined:'11.11.2023.',initials:'NB',color:'#fee2e2'}
 ];
 
-function Logo(){return <div className="logo brand-sidebar-logo"><img src={import.meta.env.BASE_URL + 'telopak-flux-logo.svg'} alt="TeloPak Flux"/></div>}
+function Logo({brand}){return <div className="logo brand-sidebar-logo">{brand?.logo_data?<img src={brand.logo_data} alt={brand.app_name||'Logo'}/>:<img src={import.meta.env.BASE_URL + 'telopak-flux-logo.svg'} alt="TeloPak Flux"/>}</div>}
 
 class ErrorBoundary extends React.Component{
  constructor(p){super(p);this.state={error:null}}
@@ -450,6 +450,9 @@ function AppShell(){
  const [page,setPage]=useState('Početna'); const [mobile,setMobile]=useState(false); const [modal,setModal]=useState(false);
  const [navPopup,setNavPopup]=useState(null); const [quickCreate,setQuickCreate]=useState(null); const [profileModal,setProfileModal]=useState(false); const [searchOpen,setSearchOpen]=useState(false); const [notifications,setNotifications]=useState(notificationSeed); const [notice,setNotice]=useState('');
  const [profile,setProfile]=useState({name:'',email:'',phone:'',avatar:null});
+ const [brand,setBrand]=useState(null);
+ const applyBrand=b=>{if(!b)return;setBrand(b);document.documentElement.style.setProperty('--blue',b.primary_color||'#1769d2');document.title=b.app_name||'TeloPak Flux';if(b.favicon_data){let link=document.querySelector("link[rel='icon']");if(!link){link=document.createElement('link');link.rel='icon';document.head.appendChild(link)}link.href=b.favicon_data}};
+ useEffect(()=>{fetch('/api/public/settings').then(r=>r.json()).then(applyBrand).catch(()=>{})},[]);
  useEffect(()=>{fetch('/api/auth/me',{credentials:'include'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{setProfile(p=>({...p,...d.user}));setAuthed(true)}).catch(()=>setAuthed(false)).finally(()=>setAuthLoading(false))},[]);
  useEffect(()=>{const handler=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setSearchOpen(true)}};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[]);
  const notify=message=>{setNotice(message);window.setTimeout(()=>setNotice(''),3500)};
@@ -472,7 +475,7 @@ function AppShell(){
  useEffect(()=>{if(authed&&isOwner&&!ownerNavItems.some(([n])=>n===page))setPage('Owner pregled')},[authed,isOwner]);
  const content=useMemo(()=>{
   if(isOwner){
-   const ownerScreens={'Owner pregled':<OwnerOverview go={go}/>,'Firme':<OwnerCompanies/>,'Svi korisnici':<OwnerUsers/>,'Pretplate':<OwnerCompanies/>,'Sistem':<OwnerOverview go={go}/>,'Audit zapis':<OwnerAudit/>};
+   const ownerScreens={'Owner pregled':<OwnerOverview go={go}/>,'Firme':<OwnerCompanies/>,'Svi korisnici':<OwnerUsers/>,'Pretplate':<OwnerCompanies/>,'Sistem':<OwnerOverview go={go}/>,'Audit zapis':<OwnerAudit/>,'Postavke aplikacije':<OwnerSettings onBrandChange={applyBrand}/>};
    return ownerScreens[page]||ownerScreens['Owner pregled'];
   }
   const screens={
@@ -504,7 +507,7 @@ function AppShell(){
  }
 
  return <div className="app">
-  {mobile&&<div className="mobile-overlay" onClick={()=>setMobile(false)}/>}<aside className={`${mobile?'open ':''}${isOwner?'owner-sidebar':''}`}><Logo/><nav><span className="nav-label">{isOwner?'PLATFORMA':'GLAVNI MENI'}</span>{(isOwner?ownerNavItems:navItems).map(([name,Icon])=><button className={page===name?'active':''} onClick={()=>go(name)} key={name}><Icon/>{name}{!isOwner&&name==='Poslovi'&&<em>6</em>}</button>)}</nav><div className="sidebar-bottom">{!isOwner&&<><span className="nav-label">ADMINISTRACIJA</span><button className={page==='Korisnici'?'active':''} onClick={()=>go('Korisnici')}><UserCog/>Korisnici</button><button className={page==='Postavke'?'active':''} onClick={()=>go('Postavke')}><Settings/>Postavke</button><div className="help"><div><Zap/></div><strong>Treba vam pomoć?</strong><span>Naš tim je tu za vas.</span><button>Kontaktirajte podršku</button></div></>} {isOwner&&<div className="owner-sidebar-note"><ShieldCheck/><div><strong>Owner pristup</strong><span>Globalne ovlasti platforme</span></div></div>}<div className="sidebar-user"><Avatar profile={profile} className="avatar"/><div><strong>{profile.name}</strong><span>{isOwner?'Platform Owner':profile.role||'Administrator'}</span></div><button className="icon-btn logout-btn" title="Odjava" onClick={logout}><LogOut/></button></div></div></aside>
+  {mobile&&<div className="mobile-overlay" onClick={()=>setMobile(false)}/>}<aside className={`${mobile?'open ':''}${isOwner?'owner-sidebar':''}`}><Logo brand={brand}/><nav><span className="nav-label">{isOwner?'PLATFORMA':'GLAVNI MENI'}</span>{(isOwner?ownerNavItems:navItems).map(([name,Icon])=><button className={page===name?'active':''} onClick={()=>go(name)} key={name}><Icon/>{name}{!isOwner&&name==='Poslovi'&&<em>6</em>}</button>)}</nav><div className="sidebar-bottom">{!isOwner&&<><span className="nav-label">ADMINISTRACIJA</span><button className={page==='Korisnici'?'active':''} onClick={()=>go('Korisnici')}><UserCog/>Korisnici</button><button className={page==='Postavke'?'active':''} onClick={()=>go('Postavke')}><Settings/>Postavke</button><div className="help"><div><Zap/></div><strong>Treba vam pomoć?</strong><span>Naš tim je tu za vas.</span><button>Kontaktirajte podršku</button></div></>} {isOwner&&<div className="owner-sidebar-note"><ShieldCheck/><div><strong>Owner pristup</strong><span>Globalne ovlasti platforme</span></div></div>}<div className="sidebar-user"><Avatar profile={profile} className="avatar"/><div><strong>{profile.name}</strong><span>{isOwner?'Platform Owner':profile.role||'Administrator'}</span></div><button className="icon-btn logout-btn" title="Odjava" onClick={logout}><LogOut/></button></div></div></aside>
   <main className={isOwner?'owner-main':''}><header><button className="menu-btn" onClick={()=>setMobile(true)}><Menu/></button><button className="global-search global-search-button" onClick={()=>!isOwner&&setSearchOpen(true)}><Search/><span>{isOwner?'Pretraži firme i korisnike...':'Pretraži klijente, poslove, račune...'}</span><kbd>⌘ K</kbd></button><div className="header-actions">
    {!isOwner&&<div className="header-pop-wrap"><button className={`quick ${navPopup==='quick'?'active':''}`} onClick={()=>setNavPopup(navPopup==='quick'?null:'quick')}><Plus/> Brzo dodaj <ChevronDown/></button>{navPopup==='quick'&&<QuickAddMenu close={()=>setNavPopup(null)} onSelect={quickSelect}/>}</div>}
    <div className="header-pop-wrap"><button className={`bell ${navPopup==='notifications'?'active':''}`} onClick={()=>setNavPopup(navPopup==='notifications'?null:'notifications')}><Bell/>{notifications.some(n=>!n.read)&&<i></i>}</button>{navPopup==='notifications'&&<NotificationCenter items={notifications} setItems={setNotifications} close={()=>setNavPopup(null)} go={go}/>}</div>
