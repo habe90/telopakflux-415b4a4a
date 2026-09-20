@@ -232,7 +232,7 @@ app.put('/api/auth/profile', requireAuth, async (req,res)=>{
   if(req.body.phone!==undefined){sets.push('phone=$'+(i++));vals.push(String(req.body.phone||'').slice(0,40));}
   if(req.body.avatar_data!==undefined){
    const v=req.body.avatar_data;
-   const validAvatar=v==null||v===''||(/^data:image\/(png|jpeg|webp);base64,/.test(v)&&v.length<1400000);
+   const validAvatar=v==null||v===''||(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=\r\n]+$/.test(v)&&v.length<2000000);
    if(!validAvatar) return res.status(400).json({error:'Slika nije validna ili je prevelika (maksimalno 1 MB).'});
    sets.push('avatar_data=$'+(i++));vals.push(v||null);
   }
