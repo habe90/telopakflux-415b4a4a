@@ -334,6 +334,10 @@
 .owner-action svg{width:14px}
 .owner-action.danger{background:#fff0f1;border-color:#f6d3d7;color:#c23b48}
 .owner-action.danger:hover{background:#fde3e5}
+.owner-action.verify{background:#fff8e6;border-color:#f3e2ae;color:#96700f;white-space:nowrap}
+.owner-action.verify:hover{background:#fef1cc}
+.owner-verified-tag{display:inline-flex;align-items:center;gap:6px;color:#168453;font-size:11.5px;font-weight:700}
+.owner-verified-tag svg{width:15px}
 .owner-action.big{padding:10px 16px;font-size:13px}
 .owner-row-actions{display:flex;gap:7px;flex-wrap:wrap}
 .owner-audit strong{font-size:13.5px}
