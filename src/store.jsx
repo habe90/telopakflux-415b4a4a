@@ -75,12 +75,12 @@ function makeSynced(table, currentArr, rawSetter) {
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
-  const [clients, _setClients] = useState(clientsSeed);
-  const [jobs, _setJobs] = useState(jobsSeed);
-  const [offers, _setOffers] = useState(offersSeed);
-  const [invoices, _setInvoices] = useState(invoicesSeed);
-  const [stock, _setStock] = useState(stockSeed);
-  const [maintenance, _setMaintenance] = useState(maintenanceSeed);
+  const [clients, _setClients] = useState([]);
+  const [jobs, _setJobs] = useState([]);
+  const [offers, _setOffers] = useState([]);
+  const [invoices, _setInvoices] = useState([]);
+  const [stock, _setStock] = useState([]);
+  const [maintenance, _setMaintenance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [backendOnline, setBackendOnline] = useState(false);
 
@@ -95,7 +95,8 @@ export function DataProvider({ children }) {
         _setClients(c); _setJobs(j); _setOffers(o); _setInvoices(i); _setStock(s); _setMaintenance(m);
         setBackendOnline(true);
       } catch (e) {
-        // Backend/baza nisu dostupni (npr. sandbox pregled) — ostajemo na demo podacima iznad.
+        // Nikad ne prikazuj demo poslovne podatke kao stvarne podatke korisnika.
+        _setClients([]); _setJobs([]); _setOffers([]); _setInvoices([]); _setStock([]); _setMaintenance([]);
         setBackendOnline(false);
       } finally {
         if (!cancelled) setLoading(false);
