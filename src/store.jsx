@@ -40,10 +40,10 @@ export const maintenanceSeed = [
 ];
 
 const API = '/api';
-async function apiGet(table){const r=await fetch(`${API}/${table}`);if(!r.ok)throw new Error('get failed');return r.json();}
-async function apiPost(table,body){const r=await fetch(`${API}/${table}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error('post failed');return r.json();}
-async function apiPut(table,id,body){const r=await fetch(`${API}/${table}/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error('put failed');return r.json();}
-async function apiDelete(table,id){const r=await fetch(`${API}/${table}/${id}`,{method:'DELETE'});if(!r.ok)throw new Error('delete failed');return r.json();}
+async function apiGet(table){const r=await fetch(`${API}/${table}`,{credentials:'include'});if(!r.ok)throw new Error('get failed');return r.json();}
+async function apiPost(table,body){const r=await fetch(`${API}/${table}`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error('post failed');return r.json();}
+async function apiPut(table,id,body){const r=await fetch(`${API}/${table}/${id}`,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error('put failed');return r.json();}
+async function apiDelete(table,id){const r=await fetch(`${API}/${table}/${id}`,{method:'DELETE',credentials:'include'});if(!r.ok)throw new Error('delete failed');return r.json();}
 function stripId(o){const c={...o};delete c.id;return c;}
 
 // Pretvara obično setStanje(updater) pozivanje (koje cijela aplikacija već koristi) u
@@ -126,7 +126,7 @@ export function DataProvider({ children }) {
   // PDF preko pravog backend-a (pdfkit); ako backend nije dostupan, poziv baca grešku
   // i poziva strana (App.jsx) se vraća na klijentski exportToPDF.
   const downloadInvoicePDF = async invoiceId => {
-    const r = await fetch(`${API}/pdf/invoice/${invoiceId}`);
+    const r = await fetch(`${API}/pdf/invoice/${invoiceId}`,{credentials:'include'});
     if (!r.ok) throw new Error('pdf failed');
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
@@ -134,7 +134,7 @@ export function DataProvider({ children }) {
     URL.revokeObjectURL(url);
   };
   const downloadOfferPDF = async offerId => {
-    const r = await fetch(`${API}/pdf/offer/${offerId}`);
+    const r = await fetch(`${API}/pdf/offer/${offerId}`,{credentials:'include'});
     if (!r.ok) throw new Error('pdf failed');
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
@@ -145,7 +145,7 @@ export function DataProvider({ children }) {
   // Slanje pravog emaila preko backend-a (koristi SMTP ako je podešen u OctaCloud env-u,
   // inače backend vrati simulated:true i email zabilježi u serverskim logovima).
   const sendEmail = async ({ to, subject, message }) => {
-    const r = await fetch(`${API}/email/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to, subject, message }) });
+    const r = await fetch(`${API}/email/send`, { method: 'POST', credentials:'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to, subject, message }) });
     if (!r.ok) throw new Error('email failed');
     return r.json();
   };
