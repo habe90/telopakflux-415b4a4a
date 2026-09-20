@@ -429,11 +429,13 @@ function ProfileModal({close,onSaved,profile,setProfile}){
 function AppShell(){
  const {clients,addClient,addJob,addOffer,addInvoice,addStock,loading,backendOnline}=useData();
  const [authed,setAuthed]=useState(false);
+ const [authLoading,setAuthLoading]=useState(true);
  const [authView,setAuthView]=useState('login');
  const [inviteView,setInviteView]=useState(null);
  const [page,setPage]=useState('Početna'); const [mobile,setMobile]=useState(false); const [modal,setModal]=useState(false);
  const [navPopup,setNavPopup]=useState(null); const [quickCreate,setQuickCreate]=useState(null); const [profileModal,setProfileModal]=useState(false); const [searchOpen,setSearchOpen]=useState(false); const [notifications,setNotifications]=useState(notificationSeed); const [notice,setNotice]=useState('');
- const [profile,setProfile]=useState({name:'Marko Kovač',email:'marko@telopak.ba',phone:'+387 61 111 222',avatar:null});
+ const [profile,setProfile]=useState({name:'',email:'',phone:'',avatar:null});
+ useEffect(()=>{fetch('/api/auth/me',{credentials:'include'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{setProfile(p=>({...p,...d.user}));setAuthed(true)}).catch(()=>setAuthed(false)).finally(()=>setAuthLoading(false))},[]);
  useEffect(()=>{const handler=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setSearchOpen(true)}};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[]);
  const notify=message=>{setNotice(message);window.setTimeout(()=>setNotice(''),3500)};
  const quickSelect=type=>{setNavPopup(null);if(type==='job')setModal(true);else setQuickCreate(type)};
@@ -448,7 +450,8 @@ function AppShell(){
   notify(`${label} je uspješno kreiran.`);
   setPage(target);
  };
- const logout=()=>{setNavPopup(null);setAuthed(false);setAuthView('login')};
+ const authSuccess=user=>{setProfile(p=>({...p,...user}));setAuthed(true);setAuthView('login')};
+ const logout=async()=>{setNavPopup(null);try{await fetch('/api/auth/logout',{method:'POST',credentials:'include'})}catch{}setAuthed(false);setProfile({name:'',email:'',phone:'',avatar:null});setAuthView('login')};
  const go=p=>{setPage(p);setMobile(false)};
  const content=useMemo(()=>{
   const screens={
@@ -471,15 +474,16 @@ function AppShell(){
   return <AcceptInvite invite={inviteView} goLogin={()=>{setInviteView(null);setAuthed(false);setAuthView('login');}}/>;
  }
 
+ if(authLoading) return <div className="auth-loading"><ShieldCheck/><strong>Sigurna provjera sesije...</strong></div>;
  if(!authed){
   if(authView==='forgot') return <ForgotPassword goLogin={()=>setAuthView('login')}/>;
   return authView==='login'
-   ? <Login onLogin={()=>setAuthed(true)} goRegister={()=>setAuthView('register')} goForgot={()=>setAuthView('forgot')}/>
-   : <Register onRegister={()=>setAuthed(true)} goLogin={()=>setAuthView('login')}/>;
+   ? <Login onLogin={authSuccess} goRegister={()=>setAuthView('register')} goForgot={()=>setAuthView('forgot')}/>
+   : <Register onRegister={authSuccess} goLogin={()=>setAuthView('login')}/>;
  }
 
  return <div className="app">
-  {mobile&&<div className="mobile-overlay" onClick={()=>setMobile(false)}/>}<aside className={mobile?'open':''}><Logo/><nav><span className="nav-label">GLAVNI MENI</span>{navItems.map(([name,Icon])=><button className={page===name?'active':''} onClick={()=>go(name)} key={name}><Icon/>{name}{name==='Poslovi'&&<em>6</em>}</button>)}</nav><div className="sidebar-bottom"><span className="nav-label">ADMINISTRACIJA</span><button className={page==='Korisnici'?'active':''} onClick={()=>go('Korisnici')}><UserCog/>Korisnici</button><button className={page==='Postavke'?'active':''} onClick={()=>go('Postavke')}><Settings/>Postavke</button><div className="help"><div><Zap/></div><strong>Treba vam pomoć?</strong><span>Naš tim je tu za vas.</span><button>Kontaktirajte podršku</button></div><div className="sidebar-user"><Avatar profile={profile} className="avatar"/><div><strong>{profile.name}</strong><span>Administrator</span></div><button className="icon-btn logout-btn" title="Odjava" onClick={()=>{setAuthed(false);setAuthView('login');}}><LogOut/></button></div></div></aside>
+  {mobile&&<div className="mobile-overlay" onClick={()=>setMobile(false)}/>}<aside className={mobile?'open':''}><Logo/><nav><span className="nav-label">GLAVNI MENI</span>{navItems.map(([name,Icon])=><button className={page===name?'active':''} onClick={()=>go(name)} key={name}><Icon/>{name}{name==='Poslovi'&&<em>6</em>}</button>)}</nav><div className="sidebar-bottom"><span className="nav-label">ADMINISTRACIJA</span><button className={page==='Korisnici'?'active':''} onClick={()=>go('Korisnici')}><UserCog/>Korisnici</button><button className={page==='Postavke'?'active':''} onClick={()=>go('Postavke')}><Settings/>Postavke</button><div className="help"><div><Zap/></div><strong>Treba vam pomoć?</strong><span>Naš tim je tu za vas.</span><button>Kontaktirajte podršku</button></div><div className="sidebar-user"><Avatar profile={profile} className="avatar"/><div><strong>{profile.name}</strong><span>Administrator</span></div><button className="icon-btn logout-btn" title="Odjava" onClick={logout}><LogOut/></button></div></div></aside>
   <main><header><button className="menu-btn" onClick={()=>setMobile(true)}><Menu/></button><button className="global-search global-search-button" onClick={()=>setSearchOpen(true)}><Search/><span>Pretraži klijente, poslove, račune...</span><kbd>⌘ K</kbd></button><div className="header-actions">
    <div className="header-pop-wrap"><button className={`quick ${navPopup==='quick'?'active':''}`} onClick={()=>setNavPopup(navPopup==='quick'?null:'quick')}><Plus/> Brzo dodaj <ChevronDown/></button>{navPopup==='quick'&&<QuickAddMenu close={()=>setNavPopup(null)} onSelect={quickSelect}/>}</div>
    <div className="header-pop-wrap"><button className={`bell ${navPopup==='notifications'?'active':''}`} onClick={()=>setNavPopup(navPopup==='notifications'?null:'notifications')}><Bell/>{notifications.some(n=>!n.read)&&<i></i>}</button>{navPopup==='notifications'&&<NotificationCenter items={notifications} setItems={setNotifications} close={()=>setNavPopup(null)} go={go}/>}</div>
