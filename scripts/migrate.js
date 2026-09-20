@@ -66,6 +66,29 @@ async function run() {
     created_at timestamptz DEFAULT now()
   )`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS companies (
+    id serial PRIMARY KEY, name text NOT NULL, industry text, field_workers int DEFAULT 1,
+    created_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS app_users (
+    id serial PRIMARY KEY, company_id int REFERENCES companies(id) ON DELETE CASCADE,
+    name text NOT NULL, email text UNIQUE NOT NULL, phone text DEFAULT '', password_hash text NOT NULL,
+    role text NOT NULL DEFAULT 'Administrator', status text NOT NULL DEFAULT 'Aktivan',
+    email_verified boolean DEFAULT false, failed_attempts int DEFAULT 0, locked_until timestamptz,
+    two_factor_enabled boolean DEFAULT false, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS auth_sessions (
+    id bigserial PRIMARY KEY, user_id int REFERENCES app_users(id) ON DELETE CASCADE,
+    token_hash text UNIQUE NOT NULL, user_agent text, ip_address text,
+    expires_at timestamptz NOT NULL, revoked_at timestamptz, created_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS auth_tokens (
+    id bigserial PRIMARY KEY, user_id int REFERENCES app_users(id) ON DELETE CASCADE,
+    purpose text NOT NULL, token_hash text NOT NULL, attempts int DEFAULT 0,
+    expires_at timestamptz NOT NULL, used_at timestamptz, created_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_tokens_lookup ON auth_tokens(user_id,purpose,token_hash)`);
   console.log('Tabele su spremne.');
 
   const { rows } = await pool.query('SELECT COUNT(*)::int AS c FROM clients');
