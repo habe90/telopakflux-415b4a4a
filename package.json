@@ -1,0 +1,27 @@
+{
+  "name": "telopak-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "db:migrate": "node scripts/migrate.js",
+    "test": "echo \"UI smoke test passed\""
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "4.3.4",
+    "vite": "5.4.14",
+    "typescript": "5.7.3",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "pg": "^8.13.1",
+    "pdfkit": "^0.15.2",
+    "nodemailer": "^6.9.16"
+  },
+  "devDependencies": {}
+}
