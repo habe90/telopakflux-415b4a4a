@@ -1,0 +1,14 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const read=p=>fs.readFileSync(p,'utf8');
+const ai=read('src/AIAssistant.jsx'),store=read('src/store.jsx'),modules=read('src/Modules.jsx'),server=read('server/index.js'),migration=read('scripts/migrate.js');
+assert(!ai.includes('Marić Stan'),'AI pomoćnik ne smije imati demo klijente');
+assert(!ai.includes('P-028'),'AI pomoćnik ne smije imati demo ponude');
+assert(!ai.includes('82</strong>'),'AI pomoćnik ne smije imati hardkodovan score');
+assert(!store.includes('clientsSeed'),'Store ne smije koristiti seed podatke');
+assert(!store.includes('localStorage'),'Poslovni podaci ne smiju biti samo u browseru');
+assert(server.includes("app.get('/api/dashboard'"),'Dashboard API mora postojati');
+assert(server.includes("otpMethod:'totp'"),'Login mora podržavati pravi TOTP');
+assert(migration.includes("process.env.SEED_DEMO_DATA === 'true'"),'Demo seed mora biti eksplicitno uključen');
+assert(!modules.includes('18.420 €'),'Izvještaji ne smiju imati hardkodovan prihod');
+assert(!modules.includes('Demo kod'),'2FA ne smije prikazivati demo kod');
+console.log('Static integrity tests passed');
