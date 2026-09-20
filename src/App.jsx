@@ -48,6 +48,16 @@ const teamUsersSeed = [
 ];
 
 function Logo(){return <div className="logo brand-sidebar-logo"><img src={import.meta.env.BASE_URL + 'telopak-flux-logo.svg'} alt="TeloPak Flux"/></div>}
+
+class ErrorBoundary extends React.Component{
+ constructor(p){super(p);this.state={error:null}}
+ static getDerivedStateFromError(error){return {error}}
+ componentDidCatch(error,info){console.error('UI greška:',error,info)}
+ render(){
+  if(this.state.error) return <div className="crash-screen"><AlertTriangle/><h2>Nešto je pošlo po zlu</h2><p>Došlo je do neočekivane greške u ovom dijelu aplikacije. Detalji ispod mogu pomoći pri rješavanju problema.</p><pre>{String(this.state.error?.message||this.state.error)}</pre><button className="primary" onClick={()=>this.setState({error:null})}>Pokušaj ponovo</button></div>;
+  return this.props.children;
+ }
+}
 function Badge({children,tone}){return <span className={`badge ${tone||children.toLowerCase().replace(' ','-')}`}>{children}</span>}
 function Stat({title,value,meta,up,icon:Icon,tone,onClick}){return <article className={`stat-card ${onClick?'clickable':''}`} onClick={onClick}><div className={`stat-icon ${tone}`}><Icon size={20}/></div><div className="stat-copy"><span>{title}</span><strong>{value}</strong><small className={up===false?'down':'up'}>{up===false?<ArrowDownRight/>:<ArrowUpRight/>}{meta}</small></div></article>}
 
@@ -499,7 +509,7 @@ function AppShell(){
    {!isOwner&&<div className="header-pop-wrap"><button className={`quick ${navPopup==='quick'?'active':''}`} onClick={()=>setNavPopup(navPopup==='quick'?null:'quick')}><Plus/> Brzo dodaj <ChevronDown/></button>{navPopup==='quick'&&<QuickAddMenu close={()=>setNavPopup(null)} onSelect={quickSelect}/>}</div>}
    <div className="header-pop-wrap"><button className={`bell ${navPopup==='notifications'?'active':''}`} onClick={()=>setNavPopup(navPopup==='notifications'?null:'notifications')}><Bell/>{notifications.some(n=>!n.read)&&<i></i>}</button>{navPopup==='notifications'&&<NotificationCenter items={notifications} setItems={setNotifications} close={()=>setNavPopup(null)} go={go}/>}</div>
    <div className="header-pop-wrap"><button className={`profile-trigger ${navPopup==='profile'?'active':''}`} onClick={()=>setNavPopup(navPopup==='profile'?null:'profile')}><Avatar profile={profile} className="avatar header-avatar"/><ChevronDown/></button>{navPopup==='profile'&&<ProfileMenu close={()=>setNavPopup(null)} go={go} onProfile={()=>setProfileModal(true)} onLogout={logout} profile={profile}/>}</div>
-  </div></header>{!loading&&!backendOnline&&<div className="demo-mode-banner"><AlertTriangle/> Demo režim: nije moguće povezati se na bazu, pa se izmjene ne čuvaju trajno. Na produkcijskom serveru sve radi sa pravom bazom podataka.</div>}<div className="content">{content}</div></main>
+  </div></header>{!loading&&!backendOnline&&<div className="demo-mode-banner"><AlertTriangle/> Demo režim: nije moguće povezati se na bazu, pa se izmjene ne čuvaju trajno. Na produkcijskom serveru sve radi sa pravom bazom podataka.</div>}<div className="content"><ErrorBoundary key={page}>{content}</ErrorBoundary></div></main>
   {modal&&<Modal close={()=>setModal(false)} clients={clients} onCreate={job=>{addJob(job);notify('Novi posao je kreiran i dodan u raspored.');}}/>} {quickCreate&&<QuickCreateModal type={quickCreate} close={()=>setQuickCreate(null)} onSave={quickSaved} clients={clients}/>} {profileModal&&<ProfileModal close={()=>setProfileModal(false)} onSaved={notify} profile={profile} setProfile={setProfile}/>} {searchOpen&&<GlobalSearch close={()=>setSearchOpen(false)} go={go}/>} {notice&&<div className="toast"><CheckCircle2/><div><strong>Uspješno</strong><span>{notice}</span></div><button onClick={()=>setNotice('')}><X/></button></div>}
  </div>
 }
