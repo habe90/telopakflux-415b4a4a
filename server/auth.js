@@ -15,7 +15,7 @@ export function passwordValid(password = '') {
   return password.length >= 12 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 export function publicUser(row) {
-  return { id: row.id, name: row.name, email: row.email, phone: row.phone || '', role: row.role, isPlatformOwner: row.role === 'Platform Owner', companyId: row.company_id, emailVerified: !!row.email_verified, twoFactorEnabled: !!row.two_factor_enabled };
+  return { id: row.id, name: row.name, email: row.email, phone: row.phone || '', avatar: row.avatar_data || null, role: row.role, isPlatformOwner: row.role === 'Platform Owner', companyId: row.company_id, emailVerified: !!row.email_verified, twoFactorEnabled: !!row.two_factor_enabled };
 }
 export function setSessionCookie(res, token, remember = false) {
   res.cookie(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: remember ? 30 * 86400000 : SESSION_DAYS * 86400000 });
