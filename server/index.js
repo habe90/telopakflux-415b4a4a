@@ -18,7 +18,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '6mb' }));
 app.use(cookieParser());
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Previše pokušaja. Pokušajte ponovo za 15 minuta.' } });
 const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Previše pokušaja. Pokušajte ponovo kasnije.' } });
