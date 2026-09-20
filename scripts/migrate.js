@@ -117,6 +117,7 @@ async function run() {
     updated_at timestamptz DEFAULT now()
   )`);
   await pool.query(`INSERT INTO platform_settings(id) VALUES(1) ON CONFLICT(id) DO NOTHING`);
+  await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS avatar_data text`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_tokens_lookup ON auth_tokens(user_id,purpose,token_hash)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_company ON clients(company_id)`);
