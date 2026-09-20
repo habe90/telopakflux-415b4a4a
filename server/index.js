@@ -169,11 +169,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     if (user.status !== 'Aktivan') return res.status(403).json({ error: 'Nalog je deaktiviran.' });
     if (!user.email_verified) return res.status(403).json({ error: 'Email adresa nije potvrđena.' });
     await pool.query('UPDATE app_users SET failed_attempts=0,locked_until=NULL WHERE id=$1', [user.id]);
+    if(user.two_factor_enabled&&user.two_factor_secret){return res.json({requiresOtp:true,otpMethod:'totp',email:user.email,delivered:true})}
     const code = generateCode();
     await pool.query(`UPDATE auth_tokens SET used_at=now() WHERE user_id=$1 AND purpose='login_otp' AND used_at IS NULL`, [user.id]);
     await pool.query(`INSERT INTO auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,'login_otp',$2,now()+interval '10 minutes')`, [user.id, hashToken(code)]);
     const mail = await sendSecurityEmail({ to: user.email, subject: 'TeloPak Flux sigurnosni kod', message: `Vaš kod za prijavu je: ${code}\nKod važi 10 minuta. Nikome ga ne prosljeđujte.` });
-    res.json({ requiresOtp: true, challenge: hashToken(`${user.id}:${Date.now()}`).slice(0,24), email: user.email, delivered: mail.delivered, deliveryNote: mail.delivered ? null : mail.reason });
+    res.json({ requiresOtp: true, otpMethod:'email', email: user.email, delivered: mail.delivered, deliveryNote: mail.delivered ? null : mail.reason });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Prijava trenutno nije dostupna.' }); }
 });
 app.post('/api/auth/login/verify', strictLimiter, async (req, res) => {
@@ -181,9 +182,15 @@ app.post('/api/auth/login/verify', strictLimiter, async (req, res) => {
     const email = normalizeEmail(req.body?.email), code = String(req.body?.code || '');
     const u = await pool.query('SELECT * FROM app_users WHERE email=$1 AND status=$2', [email, 'Aktivan']);
     if (!u.rows[0]) return res.status(401).json({ error: 'Kod nije ispravan ili je istekao.' });
-    const t = await pool.query(`SELECT * FROM auth_tokens WHERE user_id=$1 AND purpose='login_otp' AND token_hash=$2 AND used_at IS NULL AND expires_at>now() AND attempts<5 ORDER BY id DESC LIMIT 1`, [u.rows[0].id, hashToken(code)]);
-    if (!t.rows[0]) return res.status(401).json({ error: 'Kod nije ispravan ili je istekao.' });
-    await pool.query('UPDATE auth_tokens SET used_at=now() WHERE id=$1', [t.rows[0].id]);
+    let verified=false;
+    if(u.rows[0].two_factor_enabled&&u.rows[0].two_factor_secret){
+      verified=authenticator.check(code,u.rows[0].two_factor_secret);
+      if(!verified){const hashes=Array.isArray(u.rows[0].two_factor_backup_hashes)?u.rows[0].two_factor_backup_hashes:[];const idx=hashes.indexOf(hashToken(code.toUpperCase()));if(idx>=0){hashes.splice(idx,1);await pool.query('UPDATE app_users SET two_factor_backup_hashes=$1 WHERE id=$2',[JSON.stringify(hashes),u.rows[0].id]);verified=true}}
+    }else{
+      const t = await pool.query(`SELECT * FROM auth_tokens WHERE user_id=$1 AND purpose='login_otp' AND token_hash=$2 AND used_at IS NULL AND expires_at>now() AND attempts<5 ORDER BY id DESC LIMIT 1`, [u.rows[0].id, hashToken(code)]);
+      if(t.rows[0]){await pool.query('UPDATE auth_tokens SET used_at=now() WHERE id=$1', [t.rows[0].id]);verified=true}
+    }
+    if(!verified)return res.status(401).json({error:'Kod nije ispravan ili je istekao.'});
     await createSession(u.rows[0].id, req, res, !!req.body?.remember);
     res.json({ user: publicUser(u.rows[0]) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Potvrda prijave nije uspjela.' }); }
@@ -278,6 +285,244 @@ app.put('/api/settings/documents',requireAuth,async(req,res)=>{try{await ensureW
 app.put('/api/settings/notifications',requireAuth,async(req,res)=>{try{await ensureWorkspaceSettings(req.user.company_id);const b=req.body||{};const keys=['notify_new_job','notify_status_change','notify_payment','notify_low_stock','notify_maintenance','email_notifications'];const vals=keys.map(k=>b[k]!==false);const r=await pool.query(`UPDATE company_settings SET notify_new_job=$1,notify_status_change=$2,notify_payment=$3,notify_low_stock=$4,notify_maintenance=$5,email_notifications=$6,updated_at=now() WHERE company_id=$7 RETURNING *`,[...vals,req.user.company_id]);await workspaceAudit(req,'notification.settings.update',b);res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:'Postavke obavijesti nisu sačuvane.'})}});
 app.post('/api/settings/notifications/test',requireAuth,strictLimiter,async(req,res)=>{const result=await sendSecurityEmail({to:req.user.email,subject:'Testna TeloPak Flux obavijest',message:'Ovo je testna obavijest iz postavki vašeg radnog prostora.'});await workspaceAudit(req,'notification.test',{delivered:result.delivered});res.status(result.delivered?200:503).json(result.delivered?{ok:true}:{error:result.reason||'Testni email nije poslan.'})});
 app.put('/api/settings/security',requireAuth,async(req,res)=>{try{await ensureWorkspaceSettings(req.user.company_id);const minutes=Math.min(43200,Math.max(15,Number(req.body?.session_timeout_minutes)||10080));const r=await pool.query('UPDATE company_settings SET session_timeout_minutes=$1,updated_at=now() WHERE company_id=$2 RETURNING *',[minutes,req.user.company_id]);await workspaceAudit(req,'security.settings.update',{session_timeout_minutes:minutes});res.json(r.rows[0])}catch(e){res.status(500).json({error:'Sigurnosne postavke nisu sačuvane.'})}});
+app.get('/api/dashboard',requireAuth,async(req,res)=>{try{
+ const cid=req.user.company_id;
+ const [clients,jobs,offers,invoices,stock,maintenance]=await Promise.all([
+  pool.query('SELECT COUNT(*)::int count FROM clients WHERE company_id=$1',[cid]),
+  pool.query(`SELECT COUNT(*)::int total,COUNT(*) FILTER(WHERE status='Završeno')::int completed,COUNT(*) FILTER(WHERE status<>'Završeno')::int active FROM jobs WHERE company_id=$1`,[cid]),
+  pool.query(`SELECT COUNT(*)::int total,COUNT(*) FILTER(WHERE status='Prihvaćena')::int accepted FROM offers WHERE company_id=$1`,[cid]),
+  pool.query('SELECT paid FROM invoices WHERE company_id=$1',[cid]),
+  pool.query(`SELECT COUNT(*)::int total,COUNT(*) FILTER(WHERE stock<=min)::int low FROM stock WHERE company_id=$1`,[cid]),
+  pool.query('SELECT COUNT(*)::int total FROM maintenance WHERE company_id=$1',[cid])
+ ]);
+ const paid=invoices.rows.reduce((sum,row)=>{const raw=String(row.paid||'').replace(/[^0-9,.-]/g,'');const n=Number(raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw);return sum+(Number.isFinite(n)?n:0)},0);
+ res.json({clients:clients.rows[0],jobs:jobs.rows[0],offers:offers.rows[0],invoices:{total:invoices.rowCount,paid},stock:stock.rows[0],maintenance:maintenance.rows[0]});
+ }catch(e){console.error(e);res.status(500).json({error:'Pregled nije moguće učitati.'})}});
+app.get('/api/settings/audit',requireAuth,async(req,res)=>{try{const r=await pool.query(`SELECT a.id,a.action,a.metadata,a.ip_address,a.created_at,u.name actor FROM company_audit_log a LEFT JOIN app_users u ON u.id=a.actor_user_id WHERE a.company_id=$1 ORDER BY a.created_at DESC LIMIT 50`,[req.user.company_id]);res.json(r.rows)}catch(e){res.status(500).json({error:'Dnevnik aktivnosti nije moguće učitati.'})}});
+app.post('/api/auth/2fa/setup',requireAuth,strictLimiter,async(req,res)=>{try{const secret=authenticator.generateSecret();const issuer='TeloPak Flux';const uri=authenticator.keyuri(req.user.email,issuer,secret);const qr=await QRCode.toDataURL(uri);await pool.query(`DELETE FROM auth_tokens WHERE user_id=$1 AND purpose='2fa_setup'`,[req.user.id]);await pool.query(`INSERT INTO auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,'2fa_setup',$2,now()+interval '10 minutes')`,[req.user.id,secret]);res.json({secret,qr})}catch(e){console.error(e);res.status(500).json({error:'2FA postavljanje nije uspjelo.'})}});
+app.post('/api/auth/2fa/enable',requireAuth,strictLimiter,async(req,res)=>{try{const code=String(req.body?.code||'').replace(/\s/g,'');const t=await pool.query(`SELECT * FROM auth_tokens WHERE user_id=$1 AND purpose='2fa_setup' AND used_at IS NULL AND expires_at>now() ORDER BY id DESC LIMIT 1`,[req.user.id]);if(!t.rows[0]||!authenticator.check(code,t.rows[0].token_hash))return res.status(400).json({error:'Kod iz autentikator aplikacije nije ispravan.'});const backup=Array.from({length:8},()=>crypto.randomBytes(4).toString('hex').toUpperCase());const hashes=backup.map(hashToken);await pool.query(`UPDATE app_users SET two_factor_enabled=true,two_factor_secret=$1,two_factor_backup_hashes=$2,updated_at=now() WHERE id=$3`,[t.rows[0].token_hash,JSON.stringify(hashes),req.user.id]);await pool.query('UPDATE auth_tokens SET used_at=now() WHERE id=$1',[t.rows[0].id]);await workspaceAudit(req,'security.2fa.enabled');res.json({ok:true,backupCodes:backup})}catch(e){console.error(e);res.status(500).json({error:'2FA nije aktivirana.'})}});
+app.post('/api/auth/2fa/disable',requireAuth,strictLimiter,async(req,res)=>{try{const password=String(req.body?.password||'');const u=await pool.query('SELECT password_hash FROM app_users WHERE id=$1',[req.user.id]);if(!await verifyPassword(password,u.rows[0].password_hash))return res.status(401).json({error:'Lozinka nije ispravna.'});await pool.query(`UPDATE app_users SET two_factor_enabled=false,two_factor_secret=NULL,two_factor_backup_hashes='[]'::jsonb,updated_at=now() WHERE id=$1`,[req.user.id]);await workspaceAudit(req,'security.2fa.disabled');res.json({ok:true})}catch(e){res.status(500).json({error:'2FA nije isključena.'})}});
+
+// ---------- Platform Owner konzola ----------
+app.get('/api/owner/overview', requireAuth, requirePlatformOwner, async (req,res)=>{
+  try{
+    const [companies,users,sessions]=await Promise.all([
+      pool.query(`SELECT COUNT(*)::int total, COUNT(*) FILTER (WHERE status='Aktivna')::int active, COUNT(*) FILTER (WHERE plan='Trial')::int trials, COALESCE(SUM(monthly_price) FILTER (WHERE status='Aktivna'),0)::numeric mrr FROM companies`),
+      pool.query(`SELECT COUNT(*)::int total, COUNT(*) FILTER (WHERE status='Aktivan')::int active FROM app_users WHERE role<>'Platform Owner'`),
+      pool.query(`SELECT COUNT(*)::int active FROM auth_sessions WHERE revoked_at IS NULL AND expires_at>now()`)
+    ]);
+    let emailStatus='Not configured';if(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS){try{const transporter=nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:Number(process.env.SMTP_PORT)===465,auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASS}});await transporter.verify();emailStatus='Operational'}catch{emailStatus='Degraded'}}
+    res.json({companies:companies.rows[0],users:users.rows[0],activeSessions:sessions.rows[0].active,system:{api:'Operational',database:'Operational',email:emailStatus}});
+  }catch(e){console.error(e);res.status(500).json({error:'Nije moguće učitati pregled platforme.'})}
+});
+app.get('/api/owner/companies', requireAuth, requirePlatformOwner, async (req,res)=>{
+  try{const r=await pool.query(`SELECT c.*, COUNT(DISTINCT u.id)::int users, COUNT(DISTINCT j.id)::int jobs FROM companies c LEFT JOIN app_users u ON u.company_id=c.id AND u.role<>'Platform Owner' LEFT JOIN jobs j ON j.company_id=c.id GROUP BY c.id ORDER BY c.created_at DESC`);res.json(r.rows)}catch(e){console.error(e);res.status(500).json({error:'Nije moguće učitati firme.'})}
+});
+app.put('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{const {name,industry,status,plan,monthly_price,trial_ends_at}=req.body||{};const r=await pool.query(`UPDATE companies SET name=COALESCE($1,name),industry=COALESCE($2,industry),status=COALESCE($3,status),plan=COALESCE($4,plan),monthly_price=COALESCE($5,monthly_price),trial_ends_at=COALESCE($6,trial_ends_at) WHERE id=$7 RETURNING *`,[name||null,industry===undefined?null:industry,status||null,plan||null,monthly_price===undefined?null:Number(monthly_price),trial_ends_at||null,req.params.id]);await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.update','company',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify({name,industry,status,plan,monthly_price,trial_ends_at}),req.ip]);res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:'Izmjena firme nije uspjela.'})}
+});
+app.post('/api/owner/companies', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    const {name,industry,plan,monthly_price,status}=req.body||{};
+    if(!name||!String(name).trim()) return res.status(400).json({error:'Naziv firme je obavezan.'});
+    const r=await pool.query(`INSERT INTO companies(name,industry,plan,monthly_price,status) VALUES($1,$2,$3,$4,$5) RETURNING *`,[String(name).trim(),industry||'',plan||'Trial',Number(monthly_price)||0,status||'Aktivna']);
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.create','company',$2,$3,$4)`,[req.user.id,String(r.rows[0].id),JSON.stringify({name}),req.ip]);
+    res.status(201).json(r.rows[0]);
+  }catch(e){console.error(e);res.status(500).json({error:'Kreiranje firme nije uspjelo.'})}
+});
+app.get('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    const company=await pool.query('SELECT * FROM companies WHERE id=$1',[req.params.id]);
+    if(!company.rows[0]) return res.status(404).json({error:'Firma nije pronađena.'});
+    const [users,jobs,invoices,clients,offers]=await Promise.all([
+      pool.query(`SELECT id,name,email,role,status,email_verified,created_at FROM app_users WHERE company_id=$1 ORDER BY created_at DESC`,[req.params.id]),
+      pool.query(`SELECT COUNT(*)::int c FROM jobs WHERE company_id=$1`,[req.params.id]),
+      pool.query(`SELECT COUNT(*)::int c FROM invoices WHERE company_id=$1`,[req.params.id]),
+      pool.query(`SELECT COUNT(*)::int c FROM clients WHERE company_id=$1`,[req.params.id]),
+      pool.query(`SELECT COUNT(*)::int c FROM offers WHERE company_id=$1`,[req.params.id])
+    ]);
+    res.json({company:company.rows[0],users:users.rows,stats:{jobs:jobs.rows[0].c,invoices:invoices.rows[0].c,clients:clients.rows[0].c,offers:offers.rows[0].c}});
+  }catch(e){console.error(e);res.status(500).json({error:'Nije moguće učitati detalje firme.'})}
+});
+app.delete('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    const r=await pool.query('DELETE FROM companies WHERE id=$1 RETURNING id',[req.params.id]);
+    if(!r.rows[0]) return res.status(404).json({error:'Firma nije pronađena.'});
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'company.delete','company',$2,'{}',$3)`,[req.user.id,String(req.params.id),req.ip]);
+    res.json({ok:true});
+  }catch(e){console.error(e);res.status(500).json({error:'Brisanje firme nije uspjelo.'})}
+});
+app.get('/api/owner/users', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT u.id,u.name,u.email,u.phone,u.role,u.status,u.email_verified,u.created_at,c.name company FROM app_users u LEFT JOIN companies c ON c.id=u.company_id ORDER BY u.created_at DESC LIMIT 250`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati korisnike.'})}});
+app.put('/api/owner/users/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    const b=req.body||{};
+    const sets=[],vals=[];let i=1;
+    if(b.name!==undefined){
+      if(!String(b.name).trim()) return res.status(400).json({error:'Ime je obavezno.'});
+      sets.push('name=$'+(i++));vals.push(String(b.name).trim().slice(0,120));
+    }
+    if(b.email!==undefined){
+      const email=normalizeEmail(b.email);
+      if(!email||!email.includes('@')) return res.status(400).json({error:'Email adresa nije validna.'});
+      sets.push('email=$'+(i++));vals.push(email);
+    }
+    if(b.phone!==undefined){sets.push('phone=$'+(i++));vals.push(String(b.phone||'').slice(0,40));}
+    if(b.role!==undefined){sets.push('role=$'+(i++));vals.push(b.role);}
+    if(b.status!==undefined){sets.push('status=$'+(i++));vals.push(b.status);}
+    if(b.email_verified!==undefined){sets.push('email_verified=$'+(i++));vals.push(!!b.email_verified);}
+    if(!sets.length) return res.status(400).json({error:'Nema izmjena za sačuvati.'});
+    sets.push('updated_at=now()');
+    const idPlaceholder='$'+i;
+    vals.push(req.params.id);
+    const r=await pool.query(`UPDATE app_users SET ${sets.join(',')} WHERE id=${idPlaceholder} RETURNING id,name,email,phone,role,status,email_verified,created_at,company_id`,vals);
+    if(!r.rows[0]) return res.status(404).json({error:'Korisnik nije pronađen.'});
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'user.update','user',$2,$3,$4)`,[req.user.id,String(req.params.id),JSON.stringify(b),req.ip]);
+    res.json(r.rows[0]);
+  }catch(e){
+    if(e && e.code==='23505') return res.status(409).json({error:'Email adresa je već u upotrebi.'});
+    console.error(e);res.status(500).json({error:'Izmjena korisnika nije uspjela.'})
+  }
+});
+app.delete('/api/owner/users/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
+  try{
+    if(String(req.user.id)===String(req.params.id)) return res.status(400).json({error:'Ne možete obrisati sopstveni nalog.'});
+    const r=await pool.query('DELETE FROM app_users WHERE id=$1 RETURNING id',[req.params.id]);
+    if(!r.rows[0]) return res.status(404).json({error:'Korisnik nije pronađen.'});
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'user.delete','user',$2,'{}',$3)`,[req.user.id,String(req.params.id),req.ip]);
+    res.json({ok:true});
+  }catch(e){console.error(e);res.status(500).json({error:'Brisanje korisnika nije uspjelo.'})}
+});
+app.get('/api/owner/audit', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT a.*,u.email actor FROM platform_audit_log a LEFT JOIN app_users u ON u.id=a.actor_user_id ORDER BY a.created_at DESC LIMIT 100`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati audit zapis.'})}});
+app.get('/api/owner/settings',requireAuth,requirePlatformOwner,async(req,res)=>{try{const r=await pool.query('SELECT * FROM platform_settings WHERE id=1');res.json(r.rows[0])}catch(e){res.status(500).json({error:'Nije moguće učitati postavke platforme.'})}});
+app.put('/api/owner/settings',requireAuth,requirePlatformOwner,async(req,res)=>{
+ try{
+  const {app_name,tagline,support_email,primary_color,logo_data,favicon_data,locale,registrations_enabled,maintenance_mode}=req.body||{};
+  const validImage=v=>v==null||v===''||(/^data:image\/(png|jpeg|webp|svg\+xml|x-icon|vnd\.microsoft\.icon);base64,/.test(v)&&v.length<1400000);
+  if(!validImage(logo_data)||!validImage(favicon_data))return res.status(400).json({error:'Logo ili favicon nisu validni ili su preveliki (maksimalno 1 MB).'});
+  const color=/^#[0-9a-fA-F]{6}$/.test(primary_color||'')?primary_color:'#1769d2';
+  const r=await pool.query(`UPDATE platform_settings SET app_name=$1,tagline=$2,support_email=$3,primary_color=$4,logo_data=$5,favicon_data=$6,locale=$7,registrations_enabled=$8,maintenance_mode=$9,updated_at=now() WHERE id=1 RETURNING *`,[String(app_name||'TeloPak Flux').slice(0,80),String(tagline||'').slice(0,160),String(support_email||'').slice(0,160),color,logo_data||null,favicon_data||null,locale||'bs-BA',registrations_enabled!==false,!!maintenance_mode]);
+  await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'platform.settings.update','platform','1',$2,$3)`,[req.user.id,JSON.stringify({app_name,primary_color,locale,registrations_enabled,maintenance_mode}),req.ip]);
+  res.json(r.rows[0]);
+ }catch(e){console.error(e);res.status(500).json({error:'Čuvanje postavki nije uspjelo.'})}
+});
+
+app.use('/api/clients', requireAuth, crud('clients', { type: 'Fizičko lice', status: 'Aktivan', address: '', note: '', jobs: 0, value: '0,00 €' }));
+app.use('/api/jobs', requireAuth, crud('jobs', { priority: 'Standardno', status: 'Zakazano', city: '', amount: '—' }));
+app.use('/api/offers', requireAuth, crud('offers', { status: 'Nacrt' }));
+app.use('/api/invoices', requireAuth, crud('invoices', { status: 'Nacrt', paid: '0,00 €' }));
+app.use('/api/stock', requireAuth, crud('stock', { unit: 'kom', buy: '0,00 €', sell: '0,00 €', category: 'Ostalo' }));
+app.use('/api/maintenance', requireAuth, crud('maintenance', {}));
+
+// ---------- PDF generisanje (pravi PDF fajlovi, ne print-preview) ----------
+function brandHeaderLegacy(doc, title) {
+  doc.fillColor('#111a3f').fontSize(20).font('Helvetica-Bold').text('TeloPak', { continued: true }).fillColor('#ef1470').text('Flux');
+  doc.fillColor('#6b7a8d').fontSize(9).font('Helvetica').text('Cijeli posao. Na jednom mjestu.');
+  doc.moveDown(1.3);
+  doc.fillColor('#111a3f').fontSize(16).font('Helvetica-Bold').text(title);
+  doc.moveDown(0.8);
+  doc.fillColor('#000').font('Helvetica');
+}
+function kvLegacy(doc, label, value) {
+  doc.fontSize(10).fillColor('#6b7a8d').text(label, { continued: true }).fillColor('#1c2b3d').text(`  ${value ?? '—'}`);
+  doc.moveDown(0.35);
+}
+
+app.get('/api/pdf/invoice/:id', requireAuth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM invoices WHERE id=$1 AND company_id=$2', [req.params.id, req.user.company_id]);
+    const inv = r.rows[0];
+    if (!inv) return res.status(404).json({ error: 'Račun nije pronađen.' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="racun-${inv.no || inv.id}.pdf"`);
+    const doc = new PDFDocument({ margin: 50 });
+    doc.pipe(res);
+    brandHeader(doc, `Račun ${inv.no || ''}`);
+    const companySettings=await pool.query('SELECT * FROM company_settings WHERE company_id=$1',[req.user.company_id]);
+    const cfg=companySettings.rows[0]||{};
+    if(cfg.company_name) kv(doc,'Izdavalac:',cfg.company_name);
+    if(cfg.tax_id) kv(doc,'PDV broj:',cfg.tax_id);
+    kv(doc, 'Klijent:', inv.client);
+    kv(doc, 'Datum izdavanja:', inv.issued);
+    kv(doc, 'Rok plaćanja:', inv.due);
+    kv(doc, 'Status:', inv.status);
+    doc.moveDown(0.6);
+    doc.fontSize(13).fillColor('#111a3f').font('Helvetica-Bold').text(`Ukupan iznos: ${inv.amount || '—'}`);
+    doc.fontSize(11).fillColor('#1c2b3d').font('Helvetica').text(`Uplaćeno: ${inv.paid || '0,00 €'}`);
+    doc.moveDown(2);
+    doc.fontSize(9).fillColor('#8896a6').text(cfg.document_note||'Hvala na ukazanom povjerenju. Molimo izvršite uplatu do naznačenog roka.');
+    doc.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Generisanje PDF-a nije uspjelo.' });
+  }
+});
+
+app.get('/api/pdf/offer/:id', requireAuth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM offers WHERE id=$1 AND company_id=$2', [req.params.id, req.user.company_id]);
+    const off = r.rows[0];
+    if (!off) return res.status(404).json({ error: 'Ponuda nije pronađena.' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="ponuda-${off.no || off.id}.pdf"`);
+    const doc = new PDFDocument({ margin: 50 });
+    doc.pipe(res);
+    brandHeader(doc, `Ponuda ${off.no || ''}`);
+    const companySettings=await pool.query('SELECT * FROM company_settings WHERE company_id=$1',[req.user.company_id]);
+    const cfg=companySettings.rows[0]||{};
+    if(cfg.company_name) kv(doc,'Izdavalac:',cfg.company_name);
+    if(cfg.tax_id) kv(doc,'PDV broj:',cfg.tax_id);
+    kv(doc, 'Klijent:', off.client);
+    kv(doc, 'Datum ponude:', off.date);
+    kv(doc, 'Važi do:', off.valid);
+    kv(doc, 'Status:', off.status);
+    doc.moveDown(0.6);
+    doc.fontSize(13).fillColor('#111a3f').font('Helvetica-Bold').text(`Ukupan iznos: ${off.amount || '—'}`);
+    doc.moveDown(2);
+    doc.fontSize(9).fillColor('#8896a6').text(cfg.document_note||'Ponuda vrijedi do naznačenog datuma. Za sva pitanja slobodno nas kontaktirajte.');
+    doc.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Generisanje PDF-a nije uspjelo.' });
+  }
+});
+
+// ---------- Email slanje (radi sa pravim SMTP-om ako je podešen, inače simulira) ----------
+app.post('/api/email/send', requireAuth, async (req, res) => {
+  const { to, subject, message } = req.body || {};
+  if (!to || !subject) return res.status(400).json({ error: 'Polja "to" i "subject" su obavezna.' });
+
+  const hasSmtp = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+  if (!hasSmtp) {
+    console.log('[EMAIL SIMULACIJA — SMTP nije podešen]', { to, subject, message });
+    return res.json({ sent: false, simulated: true, note: 'SMTP nije podešen u OctaCloud postavkama, pa je email zabilježen u serverskim logovima umjesto stvarno poslan.' });
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: Number(process.env.SMTP_PORT) === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    });
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to, subject, text: message || ''
+    });
+    res.json({ sent: true, simulated: false });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Slanje emaila nije uspjelo.' });
+  }
+});
+
+// ---------- Serviranje frontenda (SPA) ----------
+const distPathLegacy = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPathLegacy));
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Ruta nije pronađena.' });
+  res.sendFile(path.join(distPathLegacy, 'index.html'));
+});
+
+
 app.get('/api/settings/audit',requireAuth,async(req,res)=>{try{const r=await pool.query(`SELECT a.id,a.action,a.metadata,a.ip_address,a.created_at,u.name actor FROM company_audit_log a LEFT JOIN app_users u ON u.id=a.actor_user_id WHERE a.company_id=$1 ORDER BY a.created_at DESC LIMIT 50`,[req.user.company_id]);res.json(r.rows)}catch(e){res.status(500).json({error:'Dnevnik aktivnosti nije moguće učitati.'})}});
 app.post('/api/auth/2fa/setup',requireAuth,strictLimiter,async(req,res)=>{try{const secret=authenticator.generateSecret();const issuer='TeloPak Flux';const uri=authenticator.keyuri(req.user.email,issuer,secret);const qr=await QRCode.toDataURL(uri);await pool.query(`DELETE FROM auth_tokens WHERE user_id=$1 AND purpose='2fa_setup'`,[req.user.id]);await pool.query(`INSERT INTO auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,'2fa_setup',$2,now()+interval '10 minutes')`,[req.user.id,secret]);res.json({secret,qr})}catch(e){console.error(e);res.status(500).json({error:'2FA postavljanje nije uspjelo.'})}});
 app.post('/api/auth/2fa/enable',requireAuth,strictLimiter,async(req,res)=>{try{const code=String(req.body?.code||'').replace(/\s/g,'');const t=await pool.query(`SELECT * FROM auth_tokens WHERE user_id=$1 AND purpose='2fa_setup' AND used_at IS NULL AND expires_at>now() ORDER BY id DESC LIMIT 1`,[req.user.id]);if(!t.rows[0]||!authenticator.check(code,t.rows[0].token_hash))return res.status(400).json({error:'Kod iz autentikator aplikacije nije ispravan.'});const backup=Array.from({length:8},()=>crypto.randomBytes(4).toString('hex').toUpperCase());const hashes=backup.map(hashToken);await pool.query(`UPDATE app_users SET two_factor_enabled=true,two_factor_secret=$1,two_factor_backup_hashes=$2,updated_at=now() WHERE id=$3`,[t.rows[0].token_hash,JSON.stringify(hashes),req.user.id]);await pool.query('UPDATE auth_tokens SET used_at=now() WHERE id=$1',[t.rows[0].id]);await workspaceAudit(req,'security.2fa.enabled');res.json({ok:true,backupCodes:backup})}catch(e){console.error(e);res.status(500).json({error:'2FA nije aktivirana.'})}});
