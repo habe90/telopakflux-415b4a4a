@@ -26,6 +26,30 @@ app.use(cookieParser());
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Previše pokušaja. Pokušajte ponovo za 15 minuta.' } });
 const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Previše pokušaja. Pokušajte ponovo kasnije.' } });
 
+// ---------- Stvarne obavijesti ----------
+const notificationPreference={job:'notify_new_job',job_status:'notify_status_change',payment:'notify_payment',stock:'notify_low_stock',maintenance:'notify_maintenance'};
+async function createCompanyNotification(companyId,{type='info',title,message='',targetPage=null,targetId=null,preference=null}){
+ const pref=preference||notificationPreference[type];
+ const users=await pool.query(`SELECT u.id FROM app_users u LEFT JOIN company_settings s ON s.company_id=u.company_id WHERE u.company_id=$1 AND u.status='Aktivan' AND ($2::text IS NULL OR COALESCE(CASE $2 WHEN 'notify_new_job' THEN s.notify_new_job WHEN 'notify_status_change' THEN s.notify_status_change WHEN 'notify_payment' THEN s.notify_payment WHEN 'notify_low_stock' THEN s.notify_low_stock WHEN 'notify_maintenance' THEN s.notify_maintenance ELSE true END,true)=true)`,[companyId,pref||null]);
+ for(const u of users.rows)await pool.query(`INSERT INTO notifications(company_id,user_id,type,title,message,target_page,target_id) VALUES($1,$2,$3,$4,$5,$6,$7)`,[companyId,u.id,type,title,message,targetPage,targetId==null?null:String(targetId)]);
+}
+async function ensureDerivedNotifications(user){
+ const cid=user.company_id,uid=user.id;
+ const [overdue,low,dueMaintenance]=await Promise.all([
+  pool.query(`SELECT id,no,client,amount FROM invoices WHERE company_id=$1 AND status<>'Plaćen' AND to_date(nullif(regexp_replace(due,'[^0-9.]','','g'),''),'DD.MM.YYYY')<CURRENT_DATE`,[cid]),
+  pool.query(`SELECT id,name,stock,min FROM stock WHERE company_id=$1 AND stock<=min`,[cid]),
+  pool.query(`SELECT id,client,asset,next FROM maintenance WHERE company_id=$1 AND to_date(nullif(regexp_replace(next,'[^0-9.]','','g'),''),'DD.MM.YYYY') BETWEEN CURRENT_DATE AND CURRENT_DATE+INTERVAL '7 days'`,[cid])
+ ]);
+ const add=async(type,row,title,message,page)=>{const exists=await pool.query(`SELECT 1 FROM notifications WHERE user_id=$1 AND type=$2 AND target_id=$3 LIMIT 1`,[uid,type,String(row.id)]);if(!exists.rows[0])await pool.query(`INSERT INTO notifications(company_id,user_id,type,title,message,target_page,target_id) VALUES($1,$2,$3,$4,$5,$6,$7)`,[cid,uid,type,title,message,page,String(row.id)])};
+ for(const x of overdue.rows)await add('payment',x,`Račun ${x.no||''} kasni`,`${x.client||'Klijent'} · ${x.amount||'Iznos nije unesen'}`,'Računi');
+ for(const x of low.rows)await add('stock',x,'Niska zaliha materijala',`${x.name} · stanje ${x.stock}, minimum ${x.min}`,'Materijal');
+ for(const x of dueMaintenance.rows)await add('maintenance',x,'Održavanje uskoro dospijeva',`${x.client} · ${x.asset||'Oprema'} · ${x.next}`,'Održavanje');
+}
+app.get('/api/notifications',requireAuth,async(req,res)=>{try{await ensureDerivedNotifications(req.user);const r=await pool.query(`SELECT id,type,title,message AS text,target_page AS page,target_id,read_at,created_at,(read_at IS NOT NULL) AS read FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,[req.user.id]);res.json(r.rows)}catch(e){console.error(e);res.status(500).json({error:'Obavijesti nije moguće učitati.'})}});
+app.patch('/api/notifications/:id/read',requireAuth,async(req,res)=>{try{const r=await pool.query(`UPDATE notifications SET read_at=COALESCE(read_at,now()) WHERE id=$1 AND user_id=$2 RETURNING *`,[req.params.id,req.user.id]);if(!r.rows[0])return res.status(404).json({error:'Obavijest nije pronađena.'});res.json({ok:true})}catch(e){res.status(500).json({error:'Obavijest nije moguće označiti pročitanom.'})}});
+app.post('/api/notifications/read-all',requireAuth,async(req,res)=>{try{await pool.query(`UPDATE notifications SET read_at=COALESCE(read_at,now()) WHERE user_id=$1`,[req.user.id]);res.json({ok:true})}catch(e){res.status(500).json({error:'Obavijesti nije moguće označiti pročitanim.'})}});
+app.delete('/api/notifications/:id',requireAuth,async(req,res)=>{try{const r=await pool.query(`DELETE FROM notifications WHERE id=$1 AND user_id=$2 RETURNING id`,[req.params.id,req.user.id]);if(!r.rows[0])return res.status(404).json({error:'Obavijest nije pronađena.'});res.json({ok:true})}catch(e){res.status(500).json({error:'Obavijest nije moguće ukloniti.'})}});
+
 // ---------- Generic CRUD factory za poslovne tabele ----------
 function stripId(obj) {
   const copy = { ...obj };
@@ -58,7 +82,11 @@ function crud(table, defaults = {}) {
         `INSERT INTO ${table} (${cols.join(',')}) VALUES (${placeholders}) RETURNING *`,
         vals
       );
-      res.status(201).json(r.rows[0]);
+      const saved=r.rows[0];
+      if(table==='jobs')await createCompanyNotification(req.user.company_id,{type:'job',title:'Novi posao je kreiran',message:`${saved.client||'Klijent'} · ${saved.service||'Bez opisa'} · ${saved.date||''} ${saved.time||''}`.trim(),targetPage:'Poslovi',targetId:saved.id});
+      if(table==='stock'&&Number(saved.stock)<=Number(saved.min))await createCompanyNotification(req.user.company_id,{type:'stock',title:'Niska zaliha materijala',message:`${saved.name} · stanje ${saved.stock}, minimum ${saved.min}`,targetPage:'Materijal',targetId:saved.id});
+      if(table==='maintenance')await createCompanyNotification(req.user.company_id,{type:'maintenance',title:'Novo održavanje je planirano',message:`${saved.client||''} · ${saved.asset||''} · ${saved.next||''}`,targetPage:'Održavanje',targetId:saved.id});
+      res.status(201).json(saved);
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: `Ne mogu sačuvati novi zapis u ${table}.` });
@@ -78,7 +106,10 @@ function crud(table, defaults = {}) {
         [...cols.map(c => data[c]), req.params.id, req.user.company_id]
       );
       if (!r.rows[0]) return res.status(404).json({ error: 'Zapis nije pronađen.' });
-      res.json(r.rows[0]);
+      const saved=r.rows[0];
+      if(table==='jobs'&&data.status!==undefined)await createCompanyNotification(req.user.company_id,{type:'job_status',title:'Status posla je promijenjen',message:`${saved.no||''} · ${saved.client||''} · ${saved.status||''}`,targetPage:'Poslovi',targetId:saved.id});
+      if(table==='stock'&&Number(saved.stock)<=Number(saved.min))await createCompanyNotification(req.user.company_id,{type:'stock',title:'Niska zaliha materijala',message:`${saved.name} · stanje ${saved.stock}, minimum ${saved.min}`,targetPage:'Materijal',targetId:saved.id});
+      res.json(saved);
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: `Ne mogu izmijeniti zapis u ${table}.` });
@@ -414,7 +445,7 @@ function documentCrud(table,type){
  const allowed=isOffer?['client','date','valid','status','amount','items','note','subtotal','tax_rate','tax_amount','total','currency']:['client','issued','due','status','amount','paid','items','note','subtotal','tax_rate','tax_amount','total','currency'];
  const clean=body=>{const out={};for(const k of allowed)if(body[k]!==undefined)out[k]=body[k];if(out.items!==undefined)out.items=JSON.stringify(Array.isArray(out.items)?out.items:[]);for(const k of ['subtotal','tax_rate','tax_amount','total'])if(out[k]!==undefined)out[k]=Number(out[k])||0;return out};
  router.get('/',async(req,res)=>{try{const r=await pool.query(`SELECT * FROM ${table} WHERE company_id=$1 ORDER BY id DESC`,[req.user.company_id]);res.json(r.rows)}catch(e){console.error(e);res.status(500).json({error:`${isOffer?'Ponude':'Račune'} nije moguće učitati.`})}});
- router.post('/',async(req,res)=>{const client=await pool.connect();try{const data=clean(req.body||{});if(!String(data.client||'').trim())return res.status(400).json({error:'Klijent je obavezan.'});if(!Array.isArray(req.body?.items)||!req.body.items.length)return res.status(400).json({error:'Dokument mora imati najmanje jednu stavku.'});await client.query('BEGIN');const settings=await client.query('SELECT invoice_prefix,offer_prefix FROM company_settings WHERE company_id=$1',[req.user.company_id]);const prefix=isOffer?(settings.rows[0]?.offer_prefix||'PN-'):(settings.rows[0]?.invoice_prefix||'R-');const seq=await client.query(`SELECT COALESCE(MAX(id),0)+1 AS n FROM ${table} WHERE company_id=$1`,[req.user.company_id]);data.no=`${prefix}${String(seq.rows[0].n).padStart(4,'0')}`;if(!data.status)data.status='Nacrt';if(!isOffer&&!data.paid)data.paid='0,00 €';const payload={...data,company_id:req.user.company_id};const cols=Object.keys(payload),vals=Object.values(payload);const placeholders=cols.map((_,i)=>`${i+1}`).join(',');const r=await client.query(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${placeholders}) RETURNING *`,vals);await client.query('COMMIT');res.status(201).json(r.rows[0])}catch(e){await client.query('ROLLBACK');console.error(e);res.status(500).json({error:`${isOffer?'Ponuda':'Račun'} nije sačuvan. Provjerite podatke i pokušajte ponovo.`})}finally{client.release()}});
+ router.post('/',async(req,res)=>{const client=await pool.connect();try{const data=clean(req.body||{});if(!String(data.client||'').trim())return res.status(400).json({error:'Klijent je obavezan.'});if(!Array.isArray(req.body?.items)||!req.body.items.length)return res.status(400).json({error:'Dokument mora imati najmanje jednu stavku.'});await client.query('BEGIN');const settings=await client.query('SELECT invoice_prefix,offer_prefix FROM company_settings WHERE company_id=$1',[req.user.company_id]);const prefix=isOffer?(settings.rows[0]?.offer_prefix||'PN-'):(settings.rows[0]?.invoice_prefix||'R-');const seq=await client.query(`SELECT COALESCE(MAX(id),0)+1 AS n FROM ${table} WHERE company_id=$1`,[req.user.company_id]);data.no=`${prefix}${String(seq.rows[0].n).padStart(4,'0')}`;if(!data.status)data.status='Nacrt';if(!isOffer&&!data.paid)data.paid='0,00 €';const payload={...data,company_id:req.user.company_id};const cols=Object.keys(payload),vals=Object.values(payload);const placeholders=cols.map((_,i)=>`${i+1}`).join(',');const r=await client.query(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${placeholders}) RETURNING *`,vals);await client.query('COMMIT');const saved=r.rows[0];await createCompanyNotification(req.user.company_id,{type:isOffer?'offer':'payment',title:isOffer?'Nova ponuda je kreirana':'Novi račun je kreiran',message:`${saved.no} · ${saved.client} · ${saved.amount||''}`,targetPage:isOffer?'Ponude':'Računi',targetId:saved.id,preference:isOffer?'notify_status_change':'notify_payment'});res.status(201).json(saved)}catch(e){await client.query('ROLLBACK');console.error(e);res.status(500).json({error:`${isOffer?'Ponuda':'Račun'} nije sačuvan. Provjerite podatke i pokušajte ponovo.`})}finally{client.release()}});
  router.put('/:id',async(req,res)=>{try{const data=clean(req.body||{});if(!Object.keys(data).length)return res.status(400).json({error:'Nema izmjena za sačuvati.'});if(data.client!==undefined&&!String(data.client).trim())return res.status(400).json({error:'Klijent je obavezan.'});const cols=Object.keys(data),vals=Object.values(data);const setSql=cols.map((k,i)=>`${k}=${i+1}`).join(',');const idParam=`${cols.length+1}`,companyParam=`${cols.length+2}`;const r=await pool.query(`UPDATE ${table} SET ${setSql} WHERE id=${idParam} AND company_id=${companyParam} RETURNING *`,[...vals,req.params.id,req.user.company_id]);if(!r.rows[0])return res.status(404).json({error:'Dokument nije pronađen.'});res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:`Izmjena ${isOffer?'ponude':'računa'} nije uspjela.`})}});
  router.delete('/:id',async(req,res)=>{try{const r=await pool.query(`DELETE FROM ${table} WHERE id=$1 AND company_id=$2 RETURNING id`,[req.params.id,req.user.company_id]);if(!r.rows[0])return res.status(404).json({error:'Dokument nije pronađen.'});res.json({ok:true})}catch(e){console.error(e);res.status(500).json({error:`Brisanje ${isOffer?'ponude':'računa'} nije uspjelo.`})}});
  return router;
