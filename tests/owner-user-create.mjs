@@ -1,0 +1,10 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const server=fs.readFileSync('server/index.js','utf8'),ui=fs.readFileSync('src/PlatformOwner.jsx','utf8');
+assert(server.includes("app.post('/api/owner/users'"),'Owner mora imati API za kreiranje korisnika');
+assert(server.includes('passwordValid(password)'),'Privremena lozinka mora biti validirana');
+assert(server.includes('await hashPassword(password)'),'Lozinka mora biti hashirana');
+assert(server.includes("'user.create'"),'Kreiranje korisnika mora ući u audit log');
+assert(ui.includes('function NewUserModal'),'CMS mora imati formu novog korisnika');
+assert(ui.includes('Novi korisnik'),'CMS mora imati dugme Novi korisnik');
+assert(ui.includes("api('users',{method:'POST'"),'Forma mora pozvati pravi API');
+console.log('Owner user creation tests passed');
