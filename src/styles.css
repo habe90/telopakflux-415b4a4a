@@ -192,7 +192,7 @@
 
 /* TeloPak Flux branding */
 .brand-sidebar-logo{height:62px!important;padding:8px 11px!important;display:flex!important;align-items:center!important}
-.brand-sidebar-logo img{width:100%;height:auto;display:block}
+.brand-sidebar-logo img{width:100%;height:auto;display:block;filter:brightness(0) invert(1);opacity:.98}
 .brand-logo-wrap{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:3px!important}
 .brand-logo-image{width:245px;max-width:100%;height:auto;display:block}
 .brand-logo-wrap>span{font-size:9px;color:#aeb9d3;margin-left:4px}
@@ -426,7 +426,9 @@ header span.avatar-initials,
 .owner-sidebar .sidebar-user span{color:#9fb2cc}
 .owner-sidebar .logout-btn{color:#c3d2e8}
 .owner-sidebar .logout-btn:hover{color:#fff;background:rgba(255,255,255,.08)}
-.owner-sidebar .brand-sidebar-logo img{filter:brightness(0) invert(1)}
+.owner-sidebar .brand-sidebar-logo img{filter:brightness(0) invert(1);opacity:.98}
+/* Isti bijeli logo u korisničkom i Owner sidebaru */
+aside:not(.owner-sidebar) .brand-sidebar-logo img{filter:brightness(0) invert(1);opacity:.98}
 .crash-screen{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:40px;color:#3a4a5e}
 .crash-screen svg{width:38px;color:#d8515f}
 .crash-screen h2{margin:6px 0 2px;font-size:17px}
