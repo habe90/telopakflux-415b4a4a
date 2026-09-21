@@ -1,0 +1,11 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const app=fs.readFileSync('src/App.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+assert(!app.includes('notificationSeed'),'Frontend ne smije koristiti mock obavijesti');
+assert(app.includes("fetch('/api/notifications'"),'Frontend mora učitavati obavijesti iz API-ja');
+assert(app.includes("/api/notifications/read-all"),'Frontend mora podržavati označavanje svih pročitanim');
+assert(server.includes("app.get('/api/notifications'"),'Backend mora imati listu obavijesti');
+assert(server.includes("app.patch('/api/notifications/:id/read'"),'Backend mora čuvati read status');
+assert(server.includes("app.delete('/api/notifications/:id'"),'Backend mora podržavati brisanje');
+assert(server.includes('createCompanyNotification'),'Poslovni događaji moraju kreirati obavijesti');
+assert(migration.includes('CREATE TABLE IF NOT EXISTS notifications'),'Obavijesti moraju biti u PostgreSQL bazi');
+console.log('Notification logic tests passed');
