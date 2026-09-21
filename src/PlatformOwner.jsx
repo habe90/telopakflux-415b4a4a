@@ -100,7 +100,7 @@ function CompanyDetail({id,onClose,onChanged}){
  if(!data)return <Modal title="Detalji firme" onClose={onClose} wide><Skeleton/></Modal>;
  const c=data.company;
  return <Modal title={c.name} onClose={onClose} wide>
-  <div className="owner-company-hero"><span>{initials2(c.name)}</span><div><p>ORGANIZACIJA #{c.id}</p><h2>{c.name}</h2><small>{c.industry||'Djelatnost nije unesena'} · Registrovana {fmtDate(c.created_at)}</small></div><Status value={c.status}/></div>
+  <div className="owner-company-hero"><span className="owner-company-avatar">{initials2(c.name)}</span><div><p>ORGANIZACIJA #{c.id}</p><h2>{c.name}</h2><small>{c.industry||'Djelatnost nije unesena'} · Registrovana {fmtDate(c.created_at)}</small></div><Status value={c.status}/></div>
   <div className="owner-detail-stats">
    <div><small>Korisnici</small><strong>{data.users.length}</strong></div>
    <div><small>Klijenti</small><strong>{data.stats.clients}</strong></div>
