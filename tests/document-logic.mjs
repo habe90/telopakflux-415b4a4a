@@ -7,4 +7,10 @@ assert(modules.includes("if(end<start)return setError"),'Dokument mora provjerit
 assert(!modules.includes("date:'25.03.2025.'"),'Novi dokument ne smije koristiti hardkodovan datum');
 assert(migration.includes("offers ADD COLUMN IF NOT EXISTS items jsonb"),'Ponude moraju imati stavke u bazi');
 assert(migration.includes("offers ADD COLUMN IF NOT EXISTS total numeric"),'Ponude moraju imati numerički total');
+assert(modules.includes('app-toast'),'Dokumenti moraju prikazati toast poruke');
+const server=fs.readFileSync('server/index.js','utf8');
+assert(server.includes("documentCrud('offers','offer')"),'Ponude moraju koristiti namjenski CRUD');
+assert(server.includes("documentCrud('invoices','invoice')"),'Računi moraju koristiti namjenski CRUD');
+assert(server.includes("Dokument mora imati najmanje jednu stavku"),'Backend mora validirati stavke dokumenta');
+assert(server.includes("offer_prefix"),'Backend mora generisati broj ponude iz postavki');
 console.log('Document logic tests passed');
