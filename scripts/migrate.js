@@ -151,6 +151,15 @@ async function run() {
     actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL, action text NOT NULL,
     metadata jsonb DEFAULT '{}'::jsonb, ip_address text, created_at timestamptz DEFAULT now()
   )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS notifications (
+    id bigserial PRIMARY KEY,
+    company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    user_id int NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+    type text NOT NULL DEFAULT 'info', title text NOT NULL, message text NOT NULL DEFAULT '',
+    target_page text, target_id text, read_at timestamptz, created_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id,created_at DESC)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id,read_at) WHERE read_at IS NULL`);
   await pool.query(`INSERT INTO company_settings(company_id,company_name)
     SELECT id,name FROM companies ON CONFLICT(company_id) DO NOTHING`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash)`);
