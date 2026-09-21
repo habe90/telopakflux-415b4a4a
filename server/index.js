@@ -383,7 +383,28 @@ app.delete('/api/owner/companies/:id', requireAuth, requirePlatformOwner, async(
     res.json({ok:true});
   }catch(e){console.error(e);res.status(500).json({error:'Brisanje firme nije uspjelo.'})}
 });
-app.get('/api/owner/users', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT u.id,u.name,u.email,u.phone,u.role,u.status,u.email_verified,u.created_at,c.name company FROM app_users u LEFT JOIN companies c ON c.id=u.company_id ORDER BY u.created_at DESC LIMIT 250`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati korisnike.'})}});
+app.get('/api/owner/users', requireAuth, requirePlatformOwner, async(req,res)=>{try{const r=await pool.query(`SELECT u.id,u.company_id,u.name,u.email,u.phone,u.role,u.status,u.email_verified,u.created_at,c.name company FROM app_users u LEFT JOIN companies c ON c.id=u.company_id ORDER BY u.created_at DESC LIMIT 250`);res.json(r.rows)}catch(e){res.status(500).json({error:'Nije moguće učitati korisnike.'})}});
+app.post('/api/owner/users', requireAuth, requirePlatformOwner, strictLimiter, async(req,res)=>{
+  try{
+    const b=req.body||{},email=normalizeEmail(b.email),name=String(b.name||'').trim(),password=String(b.password||''),companyId=Number(b.company_id);
+    const allowedRoles=['Administrator','Menadžer','Radnik'];
+    if(!name)return res.status(400).json({error:'Ime i prezime su obavezni.'});
+    if(!email||!email.includes('@'))return res.status(400).json({error:'Unesite ispravnu email adresu.'});
+    if(!Number.isInteger(companyId)||companyId<1)return res.status(400).json({error:'Odaberite firmu korisnika.'});
+    if(!passwordValid(password))return res.status(400).json({error:'Privremena lozinka mora imati najmanje 12 znakova, veliko i malo slovo, broj i specijalni znak.'});
+    const role=allowedRoles.includes(b.role)?b.role:'Radnik',status=b.status==='Neaktivan'?'Neaktivan':'Aktivan';
+    const company=await pool.query('SELECT id,name FROM companies WHERE id=$1',[companyId]);
+    if(!company.rows[0])return res.status(404).json({error:'Odabrana firma ne postoji.'});
+    const exists=await pool.query('SELECT id FROM app_users WHERE email=$1',[email]);
+    if(exists.rows[0])return res.status(409).json({error:'Korisnik sa ovom email adresom već postoji.'});
+    const passwordHash=await hashPassword(password);
+    const r=await pool.query(`INSERT INTO app_users(company_id,name,email,phone,password_hash,role,status,email_verified) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,company_id,name,email,phone,role,status,email_verified,created_at`,[companyId,name,email,String(b.phone||'').slice(0,40),passwordHash,role,status,b.email_verified!==false]);
+    await pool.query(`INSERT INTO platform_audit_log(actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES($1,'user.create','user',$2,$3,$4)`,[req.user.id,String(r.rows[0].id),JSON.stringify({email,company_id:companyId,role,status}),req.ip]);
+    let emailDelivered=false;
+    if(b.send_email!==false){const mail=await sendSecurityEmail({to:email,subject:'Vaš TeloPak Flux korisnički nalog',message:`Kreiran vam je nalog za firmu ${company.rows[0].name}.\n\nEmail: ${email}\nPrivremena lozinka: ${password}\n\nNakon prve prijave preporučujemo da odmah promijenite lozinku.`});emailDelivered=!!mail.delivered}
+    res.status(201).json({...r.rows[0],company:company.rows[0].name,emailDelivered});
+  }catch(e){if(e?.code==='23505')return res.status(409).json({error:'Email adresa je već u upotrebi.'});console.error(e);res.status(500).json({error:'Kreiranje korisnika nije uspjelo.'})}
+});
 app.put('/api/owner/users/:id', requireAuth, requirePlatformOwner, async(req,res)=>{
   try{
     const b=req.body||{};
