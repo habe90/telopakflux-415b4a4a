@@ -1,0 +1,10 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const modules=fs.readFileSync('src/Modules.jsx','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+assert(modules.includes('const subtotal=rows.reduce'),'Dokument mora automatski računati međuzbir');
+assert(modules.includes('tax_amount:tax'),'Dokument mora čuvati iznos PDV-a');
+assert(modules.includes('items:clean'),'Dokument mora čuvati stavke');
+assert(modules.includes("if(end<start)return setError"),'Dokument mora provjeriti rok');
+assert(!modules.includes("date:'25.03.2025.'"),'Novi dokument ne smije koristiti hardkodovan datum');
+assert(migration.includes("offers ADD COLUMN IF NOT EXISTS items jsonb"),'Ponude moraju imati stavke u bazi');
+assert(migration.includes("offers ADD COLUMN IF NOT EXISTS total numeric"),'Ponude moraju imati numerički total');
+console.log('Document logic tests passed');
