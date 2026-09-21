@@ -131,8 +131,11 @@
 .auth-form .input-icon{margin-top:7px}
 .auth-form .input-icon input{height:46px;border-color:#d9e2ec;border-radius:10px;padding-left:40px;padding-right:40px;transition:border-color .18s,box-shadow .18s,background .18s}
 .auth-form .input-icon>svg{left:13px;width:16px;height:16px;color:#8495a8;pointer-events:none}
-.auth-form .eye-btn{right:9px;width:30px;height:30px;display:grid;place-items:center;border-radius:7px}
-.auth-form .eye-btn:hover{background:#eef4fb;color:#1769d2}
+.auth-form .input-icon .eye-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:34px;height:34px;min-width:34px;margin:0;padding:0;border:0;background:transparent;display:flex;align-items:center;justify-content:center;border-radius:8px;color:#8495a8;z-index:3;line-height:1}
+.auth-form .input-icon .eye-btn svg{position:static!important;inset:auto!important;transform:none!important;width:18px!important;height:18px!important;display:block;flex:none;color:currentColor}
+.auth-form .input-icon input[type=password],.auth-form .input-icon input[type=text]{padding-right:48px}
+.auth-form .input-icon .eye-btn:hover{background:#eef4fb;color:#1769d2}
+.auth-form .input-icon .eye-btn:focus-visible{outline:2px solid #1769d2;outline-offset:1px}
 .auth-form .primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
 .auth-form .auth-submit{min-height:46px;border-radius:10px;transition:transform .15s,background .15s,box-shadow .15s}
 .auth-form .auth-submit:not(:disabled):hover{background:#125ebd;box-shadow:0 8px 20px rgba(23,105,210,.25);transform:translateY(-1px)}
