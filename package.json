@@ -8,7 +8,7 @@
     "build": "vite build",
     "start": "node server/index.js",
     "db:migrate": "node scripts/migrate.js",
-    "test": "node --check server/index.js && node --check server/auth.js && node tests/static-integrity.mjs && node tests/document-logic.mjs && node tests/notification-logic.mjs"
+    "test": "node --check server/index.js && node --check server/auth.js && node tests/static-integrity.mjs && node tests/document-logic.mjs && node tests/notification-logic.mjs && node tests/owner-user-create.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "4.3.4",
