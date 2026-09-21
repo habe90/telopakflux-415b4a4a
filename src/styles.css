@@ -238,6 +238,16 @@
 .profile-unsaved{display:block;color:#b17310;font-size:9px;font-style:normal;font-weight:700;margin-top:6px}
 @keyframes pulse{50%{opacity:.35}}
 
+/* Globalne poruke za CRUD dokumenata */
+.app-toast{position:fixed;right:24px;top:78px;z-index:10000;display:flex;align-items:center;gap:11px;width:min(390px,calc(100vw - 32px));padding:14px 15px;border-radius:12px;box-shadow:0 14px 42px rgba(19,35,55,.2);font-size:13px;font-weight:700;animation:toast-in .22s ease-out}
+.app-toast.success{background:#ecfbf3;border:1px solid #aee3c7;color:#176b45}
+.app-toast.error{background:#fff1f1;border:1px solid #f3b8b8;color:#a72828}
+.app-toast>svg{width:20px;height:20px;min-width:20px}
+.app-toast span{flex:1;line-height:1.45}
+.app-toast button{border:0;background:transparent;color:inherit;padding:3px;display:grid;place-items:center;cursor:pointer}
+.app-toast button svg{width:16px;height:16px}
+@keyframes toast-in{from{opacity:0;transform:translateY(-10px) translateX(10px)}to{opacity:1;transform:none}}
+@media(max-width:600px){.app-toast{top:68px;right:16px;left:16px;width:auto}}
 /* Ponude i računi — obračun stavki */
 .document-calculation{margin-left:auto;width:min(100%,310px);display:grid;gap:8px;padding:14px 4px 2px}
 .document-calculation span{display:flex;justify-content:space-between;gap:20px;color:#69798b;font-size:12px}
