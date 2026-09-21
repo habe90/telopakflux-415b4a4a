@@ -51,6 +51,23 @@ export function OwnerSettings({onBrandChange}){
   <div className="owner-settings-save">{error&&<span className="owner-save-error"><AlertTriangle/>{error}</span>}{saved&&<span className="owner-save-success"><CheckCircle2/>{saved}</span>}<button className="primary" disabled={busy}><Save/>{busy?'Čuvanje...':'Sačuvaj postavke'}</button></div>
  </form></>;
 }
+function NewUserModal({companies,onClose,onCreated}){
+ const[f,setF]=useState({company_id:companies[0]?.id||'',name:'',email:'',phone:'',role:'Radnik',status:'Aktivan',password:'',email_verified:true,send_email:true}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[showPassword,setShowPassword]=useState(false);
+ const set=(k,v)=>setF(x=>({...x,[k]:v}));
+ const generatePassword=()=>{const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';let p='';for(let i=0;i<16;i++)p+=chars[Math.floor(Math.random()*chars.length)];set('password',p)};
+ const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{const d=await api('users',{method:'POST',body:JSON.stringify({...f,company_id:Number(f.company_id)})});onCreated(d);onClose()}catch(x){setError(x.message)}finally{setBusy(false)}};
+ return <Modal title="Novi korisnik" onClose={onClose} wide><form onSubmit={submit} className="owner-form">
+  <label>Firma<select value={f.company_id} onChange={e=>set('company_id',e.target.value)} required><option value="">Odaberite firmu</option>{companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+  <div className="owner-form-row"><label>Ime i prezime<input value={f.name} onChange={e=>set('name',e.target.value)} required/></label><label>Email adresa<input type="email" value={f.email} onChange={e=>set('email',e.target.value)} required/></label></div>
+  <label>Telefon<input value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="Opcionalno"/></label>
+  <div className="owner-form-row"><label>Uloga<select value={f.role} onChange={e=>set('role',e.target.value)}><option>Administrator</option><option>Menadžer</option><option>Radnik</option></select></label><label>Status<select value={f.status} onChange={e=>set('status',e.target.value)}><option>Aktivan</option><option>Neaktivan</option></select></label></div>
+  <label>Privremena lozinka<div style={{display:'flex',gap:8}}><input type={showPassword?'text':'password'} value={f.password} onChange={e=>set('password',e.target.value)} placeholder="Najmanje 12 znakova" required/><button type="button" className="owner-action" onClick={generatePassword}>Generiši</button><button type="button" className="owner-action" onClick={()=>setShowPassword(v=>!v)}>{showPassword?'Sakrij':'Prikaži'}</button></div><small>Veliko i malo slovo, broj i specijalni znak.</small></label>
+  <SettingToggle checked={f.email_verified} onChange={v=>set('email_verified',v)} title="Email je verifikovan" text="Korisnik može odmah pristupiti prijavi."/>
+  <SettingToggle checked={f.send_email} onChange={v=>set('send_email',v)} title="Pošalji pristupne podatke emailom" text="Korisnik dobija firmu, email i privremenu lozinku."/>
+  {error&&<p className="owner-form-error"><AlertTriangle/>{error}</p>}
+  <button className="primary owner-form-submit" disabled={busy||!companies.length}>{busy?'Kreiranje...':'Kreiraj korisnika'}</button>
+ </form></Modal>
+}
 function UserEditModal({user,onClose,onSaved}){
  const[f,setF]=useState({name:user.name||'',email:user.email||'',phone:user.phone||'',role:user.role||'Administrator',status:user.status||'Aktivan',email_verified:!!user.email_verified});
  const[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -142,8 +159,8 @@ export function OwnerCompanies(){
   </>;
 }
 export function OwnerUsers(){
- const[rows,setRows]=useState([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false),[editUser,setEditUser]=useState(null),[savingId,setSavingId]=useState(null),[notice,setNotice]=useState('');
- const load=()=>api('users').then(d=>{setRows(Array.isArray(d)?d:[]);setError('')}).catch(e=>setError(e.message)).finally(()=>setReady(true));
+ const[rows,setRows]=useState([]),[companies,setCompanies]=useState([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false),[editUser,setEditUser]=useState(null),[showNew,setShowNew]=useState(false),[savingId,setSavingId]=useState(null),[notice,setNotice]=useState('');
+ const load=()=>Promise.all([api('users'),api('companies')]).then(([u,c])=>{setRows(Array.isArray(u)?u:[]);setCompanies(Array.isArray(c)?c:[]);setError('')}).catch(e=>setError(e.message)).finally(()=>setReady(true));
  useEffect(()=>{load()},[]);
  const visible=useMemo(()=>rows.filter(x=>`${s(x.name)} ${s(x.email)} ${s(x.company)}`.toLowerCase().includes(search.toLowerCase())),[rows,search]);
  const updateUser=async(u,patch)=>{
@@ -158,7 +175,7 @@ export function OwnerUsers(){
  const verifyUser=u=>updateUser(u,{email_verified:true});
  const deleteUser=async u=>{if(!window.confirm(`Obrisati korisnika ${u.name}?`))return;try{await api(`users/${u.id}`,{method:'DELETE'});load()}catch(e){alert(e.message)}};
  if(error)return <><div className="owner-head"><div><p>GLOBAL USERS</p><h1>Korisnici platforme</h1></div></div><ErrorBox error={error}/></>;
- return <><div className="owner-head"><div><p>GLOBAL USERS</p><h1>Korisnici platforme</h1><span>Pregled svih vlasnika firmi i članova njihovih timova.</span></div></div>
+ return <><div className="owner-head"><div><p>GLOBAL USERS</p><h1>Korisnici platforme</h1><span>Pregled svih vlasnika firmi i članova njihovih timova.</span></div><button className="primary owner-new-btn" onClick={()=>setShowNew(true)}><Plus/> Novi korisnik</button></div>
   {error&&<ErrorBox error={error}/>} {notice&&<div className="owner-save-notice"><CheckCircle2/>{notice}</div>}
   <section className="owner-panel"><div className="owner-table-tools"><div className="owner-search"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pretraži korisnika, email ili firmu..."/></div><span>{visible.length} korisnika</span></div>
    {!ready?<Skeleton/>:<div className="table-wrap"><table className="owner-table"><thead><tr><th>Korisnik</th><th>Firma</th><th>Uloga</th><th>Email verifikovan</th><th>Status</th><th>Registracija</th><th>Akcije</th></tr></thead><tbody>
@@ -166,6 +183,7 @@ export function OwnerUsers(){
     {visible.map(u=><tr key={u.id}><td><div className="owner-company-cell"><span>{initials2(u.name)}</span><div><strong>{s(u.name)||'Bez imena'}</strong><small>{s(u.email)}</small></div></div></td><td>{u.company||'Platforma'}</td><td><select value={u.role} disabled={savingId===u.id} onChange={e=>updateUser(u,{role:e.target.value})}><option>Administrator</option><option>Menadžer</option><option>Radnik</option><option>Platform Owner</option></select>{savingId===u.id&&<small className="owner-saving-inline">Čuvanje...</small>}</td><td>{u.email_verified?<span className="owner-verified-tag"><CheckCircle2/> Verifikovan</span>:<button className="owner-action verify" onClick={()=>verifyUser(u)}><BadgeCheck/> Verifikuj ručno</button>}</td><td><select value={u.status} onChange={e=>updateUser(u,{status:e.target.value})}><option>Aktivan</option><option>Neaktivan</option></select></td><td>{fmtDate(u.created_at)}</td><td className="owner-row-actions"><button className="owner-action" onClick={()=>setEditUser(u)}><Pencil/> Uredi</button><button className="owner-action danger" onClick={()=>deleteUser(u)}><Trash2/></button></td></tr>)}
    </tbody></table></div>}
   </section>
+  {showNew&&<NewUserModal companies={companies} onClose={()=>setShowNew(false)} onCreated={d=>{setNotice(`Korisnik ${d.name} je uspješno kreiran.${d.emailDelivered?' Pristupni podaci su poslani emailom.':''}`);load()}}/>}
   {editUser&&<UserEditModal user={editUser} onClose={()=>setEditUser(null)} onSaved={load}/>}
   </>;
 }
