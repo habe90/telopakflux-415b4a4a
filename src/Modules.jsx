@@ -77,14 +77,14 @@ function JobForm({data,close,save}){const {clients}=useData();const [f,setF]=use
 
 function DocumentModule({kind}){
  const isOffer=kind==='Ponude';
- const {offers,setOffers,invoices,setInvoices}=useData();
- const items=isOffer?offers:invoices; const setItems=isOffer?setOffers:setInvoices;
+ const {offers,invoices,createDocument,updateDocument,deleteDocument}=useData();
+ const items=isOffer?offers:invoices;
  const [search,setSearch]=useState(''),[status,setStatus]=useState('Svi statusi'),[modal,setModal]=useState(null),[selected,setSelected]=useState(null),[toast,setToast]=useState(null);
  const notify=(message,type='success')=>{setToast({message,type});window.clearTimeout(window.__docToast);window.__docToast=window.setTimeout(()=>setToast(null),4200)};
  const statusOptions=isOffer?['Svi statusi','Nacrt','Poslata','Prihvaćena','Istekla']:['Svi statusi','Nacrt','Poslat','Plaćen','Kasni'];
  const filtered=items.filter(x=>`${x.no} ${x.client}`.toLowerCase().includes(search.toLowerCase()) && (status==='Svi statusi'||x.status===status));
- const save=async f=>{const editing=!!f.id;try{await setItems(a=>editing?a.map(x=>x.id===f.id?f:x):[...a,{...f,id:`tmp-${Date.now()}`}]);setModal(null);notify(`${isOffer?'Ponuda':'Račun'} je uspješno ${editing?'izmijenjen':'sačuvan'}.`);return true}catch(e){notify(e.message||'Dokument nije sačuvan.','error');throw e}};
- const del=async x=>{try{await setItems(a=>a.filter(i=>i.id!==x.id));setModal(null);if(selected?.id===x.id)setSelected(null);notify(`${isOffer?'Ponuda':'Račun'} je uspješno obrisan.`)}catch(e){notify(e.message||'Brisanje dokumenta nije uspjelo.','error')}};
+ const save=async f=>{const editing=!!f.id;try{const payload={...f};delete payload.id;delete payload.created_at;delete payload.company_id;const saved=editing?await updateDocument(isOffer?'offer':'invoice',f.id,payload):await createDocument(isOffer?'offer':'invoice',payload);setModal(null);setSelected(current=>current&&String(current.id)===String(saved.id)?saved:current);notify(`${isOffer?'Ponuda':'Račun'} je uspješno ${editing?'izmijenjen':'sačuvan'}.`);return saved}catch(e){notify(e.message||'Dokument nije sačuvan.','error');throw e}};
+ const del=async x=>{try{await deleteDocument(isOffer?'offer':'invoice',x.id);setModal(null);if(selected?.id===x.id)setSelected(null);notify(`${isOffer?'Ponuda':'Račun'} je uspješno obrisan.`)}catch(e){notify(e.message||'Brisanje dokumenta nije uspjelo.','error')}};
  const totalAmount=items.reduce((sum,x)=>sum+moneyNumber(x.amount),0);
  const paidAmount=isOffer?0:items.reduce((sum,x)=>sum+moneyNumber(x.paid),0);
  const acceptedCount=isOffer?items.filter(x=>x.status==='Prihvaćena').length:0;
