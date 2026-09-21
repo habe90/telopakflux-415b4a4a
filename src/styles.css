@@ -238,6 +238,13 @@
 .profile-unsaved{display:block;color:#b17310;font-size:9px;font-style:normal;font-weight:700;margin-top:6px}
 @keyframes pulse{50%{opacity:.35}}
 
+/* Ponude i računi — obračun stavki */
+.document-calculation{margin-left:auto;width:min(100%,310px);display:grid;gap:8px;padding:14px 4px 2px}
+.document-calculation span{display:flex;justify-content:space-between;gap:20px;color:#69798b;font-size:12px}
+.document-calculation span:last-child{border-top:1px solid #dce4ed;padding-top:10px;color:#14243a;font-size:14px;font-weight:800}
+.document-calculation strong{color:#14243a}
+.line-item input[type=number]{text-align:right}
+.line-item button:disabled{opacity:.35;cursor:not-allowed}
 /* AI pomoćnik — bolja čitljivost i jasnija vizuelna hijerarhija */
 .ai-page-head h1{font-size:32px;line-height:1.15}
 .ai-page-head>div>p:last-child{font-size:14px;line-height:1.55;color:#65758a}
