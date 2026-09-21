@@ -98,6 +98,20 @@ async function run() {
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE stock ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS items jsonb NOT NULL DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS note text DEFAULT ''`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS subtotal numeric(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS tax_rate numeric(6,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS tax_amount numeric(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS total numeric(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS currency text NOT NULL DEFAULT 'EUR'`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS items jsonb NOT NULL DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS note text DEFAULT ''`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS subtotal numeric(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_rate numeric(6,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_amount numeric(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS total numeric(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS currency text NOT NULL DEFAULT 'EUR'`);
   await pool.query(`CREATE TABLE IF NOT EXISTS platform_audit_log (
     id bigserial PRIMARY KEY, actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL,
     action text NOT NULL, target_type text, target_id text, metadata jsonb DEFAULT '{}'::jsonb,
