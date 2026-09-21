@@ -408,8 +408,19 @@ app.put('/api/owner/settings',requireAuth,requirePlatformOwner,async(req,res)=>{
 
 app.use('/api/clients', requireAuth, crud('clients', { type: 'Fizičko lice', status: 'Aktivan', address: '', note: '', jobs: 0, value: '0,00 €' }));
 app.use('/api/jobs', requireAuth, crud('jobs', { priority: 'Standardno', status: 'Zakazano', city: '', amount: '—' }));
-app.use('/api/offers', requireAuth, crud('offers', { status: 'Nacrt' }));
-app.use('/api/invoices', requireAuth, crud('invoices', { status: 'Nacrt', paid: '0,00 €' }));
+function documentCrud(table,type){
+ const router=express.Router();
+ const isOffer=type==='offer';
+ const allowed=isOffer?['client','date','valid','status','amount','items','note','subtotal','tax_rate','tax_amount','total','currency']:['client','issued','due','status','amount','paid','items','note','subtotal','tax_rate','tax_amount','total','currency'];
+ const clean=body=>{const out={};for(const k of allowed)if(body[k]!==undefined)out[k]=body[k];if(out.items!==undefined)out.items=JSON.stringify(Array.isArray(out.items)?out.items:[]);for(const k of ['subtotal','tax_rate','tax_amount','total'])if(out[k]!==undefined)out[k]=Number(out[k])||0;return out};
+ router.get('/',async(req,res)=>{try{const r=await pool.query(`SELECT * FROM ${table} WHERE company_id=$1 ORDER BY id DESC`,[req.user.company_id]);res.json(r.rows)}catch(e){console.error(e);res.status(500).json({error:`${isOffer?'Ponude':'Račune'} nije moguće učitati.`})}});
+ router.post('/',async(req,res)=>{const client=await pool.connect();try{const data=clean(req.body||{});if(!String(data.client||'').trim())return res.status(400).json({error:'Klijent je obavezan.'});if(!Array.isArray(req.body?.items)||!req.body.items.length)return res.status(400).json({error:'Dokument mora imati najmanje jednu stavku.'});await client.query('BEGIN');const settings=await client.query('SELECT invoice_prefix,offer_prefix FROM company_settings WHERE company_id=$1',[req.user.company_id]);const prefix=isOffer?(settings.rows[0]?.offer_prefix||'PN-'):(settings.rows[0]?.invoice_prefix||'R-');const seq=await client.query(`SELECT COALESCE(MAX(id),0)+1 AS n FROM ${table} WHERE company_id=$1`,[req.user.company_id]);data.no=`${prefix}${String(seq.rows[0].n).padStart(4,'0')}`;if(!data.status)data.status='Nacrt';if(!isOffer&&!data.paid)data.paid='0,00 €';const payload={...data,company_id:req.user.company_id};const cols=Object.keys(payload),vals=Object.values(payload);const r=await client.query(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${cols.map((_,i)=>`${i+1}`).join(',')}) RETURNING *`,vals);await client.query('COMMIT');res.status(201).json(r.rows[0])}catch(e){await client.query('ROLLBACK');console.error(e);res.status(500).json({error:`${isOffer?'Ponuda':'Račun'} nije sačuvan. Provjerite podatke i pokušajte ponovo.`})}finally{client.release()}});
+ router.put('/:id',async(req,res)=>{try{const data=clean(req.body||{});if(!Object.keys(data).length)return res.status(400).json({error:'Nema izmjena za sačuvati.'});if(data.client!==undefined&&!String(data.client).trim())return res.status(400).json({error:'Klijent je obavezan.'});const cols=Object.keys(data),vals=Object.values(data);const r=await pool.query(`UPDATE ${table} SET ${cols.map((k,i)=>`${k}=${i+1}`).join(',')} WHERE id=${cols.length+1} AND company_id=${cols.length+2} RETURNING *`,[...vals,req.params.id,req.user.company_id]);if(!r.rows[0])return res.status(404).json({error:'Dokument nije pronađen.'});res.json(r.rows[0])}catch(e){console.error(e);res.status(500).json({error:`Izmjena ${isOffer?'ponude':'računa'} nije uspjela.`})}});
+ router.delete('/:id',async(req,res)=>{try{const r=await pool.query(`DELETE FROM ${table} WHERE id=$1 AND company_id=$2 RETURNING id`,[req.params.id,req.user.company_id]);if(!r.rows[0])return res.status(404).json({error:'Dokument nije pronađen.'});res.json({ok:true})}catch(e){console.error(e);res.status(500).json({error:`Brisanje ${isOffer?'ponude':'računa'} nije uspjelo.`})}});
+ return router;
+}
+app.use('/api/offers',requireAuth,documentCrud('offers','offer'));
+app.use('/api/invoices',requireAuth,documentCrud('invoices','invoice'));
 app.use('/api/stock', requireAuth, crud('stock', { unit: 'kom', buy: '0,00 €', sell: '0,00 €', category: 'Ostalo' }));
 app.use('/api/maintenance', requireAuth, crud('maintenance', {}));
 
