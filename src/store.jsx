@@ -35,7 +35,16 @@ export function DataProvider({children}){
    return saved;
   }catch(e){setData(d=>({...d,[key]:previous}));setBackendOnline(false);setError(e.message);throw e}
  };
- const value={...data,setClients:setter('clients'),setJobs:setter('jobs'),setOffers:setter('offers'),setInvoices:setter('invoices'),setStock:setter('stock'),setMaintenance:setter('maintenance'),loading,backendOnline,error,reload:load};
+ const documentRequest=async(kind,method,payload,id)=>{
+  const resource=kind==='offer'?'offers':'invoices';
+  const saved=await request(`${resource}${id?`/${id}`:''}`,{method,body:payload?JSON.stringify(payload):undefined});
+  setData(d=>({...d,[resource]:method==='POST'?[saved,...d[resource]]:method==='PUT'?d[resource].map(x=>String(x.id)===String(id)?saved:x):d[resource].filter(x=>String(x.id)!==String(id))}));
+  setBackendOnline(true);setError('');return saved;
+ };
+ const createDocument=(kind,payload)=>documentRequest(kind,'POST',payload);
+ const updateDocument=(kind,id,payload)=>documentRequest(kind,'PUT',payload,id);
+ const deleteDocument=(kind,id)=>documentRequest(kind,'DELETE',null,id);
+ const value={...data,setClients:setter('clients'),setJobs:setter('jobs'),setOffers:setter('offers'),setInvoices:setter('invoices'),setStock:setter('stock'),setMaintenance:setter('maintenance'),createDocument,updateDocument,deleteDocument,loading,backendOnline,error,reload:load};
  return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }
 export function useData(){return useContext(DataContext)}
