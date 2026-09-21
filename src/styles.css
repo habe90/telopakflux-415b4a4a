@@ -238,6 +238,57 @@
 .profile-unsaved{display:block;color:#b17310;font-size:9px;font-style:normal;font-weight:700;margin-top:6px}
 @keyframes pulse{50%{opacity:.35}}
 
+/* AI pomoćnik — bolja čitljivost i jasnija vizuelna hijerarhija */
+.ai-page-head h1{font-size:32px;line-height:1.15}
+.ai-page-head>div>p:last-child{font-size:14px;line-height:1.55;color:#65758a}
+.ai-online{font-size:12.5px;padding:9px 13px}
+.ai-hero{padding:28px 30px;gap:20px}
+.ai-orb{width:58px;height:58px;min-width:58px}
+.ai-orb svg{width:28px;height:28px}
+.ai-hero-copy>span{font-size:11px;letter-spacing:.11em}
+.ai-hero-copy h2{font-size:22px;line-height:1.25;margin-top:4px}
+.ai-hero-copy p{font-size:13.5px;line-height:1.55;margin-top:6px}
+.ai-prompt{min-height:52px;border-radius:12px;padding:6px 7px 6px 14px}
+.ai-prompt>svg{width:19px;height:19px}
+.ai-prompt input{font-size:14px;line-height:1.4}
+.ai-prompt button{width:40px;height:40px}
+.ai-answer{padding:17px 20px;gap:14px}
+.ai-answer-icon{width:39px;height:39px;min-width:39px}
+.ai-answer strong{font-size:13.5px}
+.ai-answer p{font-size:13.5px;line-height:1.55;margin-top:4px}
+.ai-tabs button{font-size:13px;padding:12px 17px}
+.ai-tabs button em{font-size:11px;min-width:21px;height:21px}
+.ai-layout{gap:18px}
+.ai-alerts .card-head,.ai-summary .card-head{padding:19px 20px}
+.ai-alerts .card-head h3,.ai-summary h3{font-size:16px}
+.ai-alerts .card-head p{font-size:12.5px;line-height:1.45;margin-top:4px}
+.ai-alerts .card-head button{font-size:12.5px}
+.ai-alert-row{padding:18px 20px;gap:15px}
+.ai-alert-icon{width:42px;height:42px;min-width:42px}
+.ai-alert-icon svg{width:20px;height:20px}
+.ai-alert-copy strong{font-size:14px;line-height:1.35}
+.ai-alert-copy p{font-size:12.5px;line-height:1.5;margin-top:6px}
+.ai-pill{font-size:10.5px;padding:4px 8px}
+.ai-alert-row>button{font-size:12px;min-height:36px;padding:8px 11px;white-space:nowrap}
+.ai-summary{padding:21px}
+.ai-summary-top{gap:12px}
+.ai-summary-top>svg{width:39px;height:39px;padding:9px}
+.ai-summary-top span{font-size:10.5px;letter-spacing:.09em}
+.ai-summary-top strong{font-size:16px;margin-top:3px}
+.ai-summary ul{margin-top:18px}
+.ai-summary li{padding:13px 0;gap:11px}
+.ai-summary li svg{width:19px;height:19px;min-width:19px}
+.ai-summary li span{font-size:12.5px;line-height:1.45}
+.ai-summary li strong{font-size:13px}
+.ai-modal .modal-head h2{font-size:21px}
+.ai-modal .modal-head p{font-size:12.5px}
+.ai-modal-body label{font-size:12.5px;font-weight:700}
+.ai-modal-body textarea{font-size:14px;line-height:1.6;min-height:230px;padding:14px}
+.ai-disclaimer{font-size:12px;line-height:1.5;padding:12px 14px}
+.ai-alerts .empty-row{font-size:13px;padding:28px 18px}
+@media(max-width:900px){.ai-page-head h1{font-size:27px}.ai-hero{padding:22px}.ai-hero-copy h2{font-size:20px}.ai-alert-row{align-items:flex-start;flex-wrap:wrap}.ai-alert-row>button{margin-left:57px}.ai-layout{grid-template-columns:1fr}}
+@media(max-width:600px){.ai-page-head h1{font-size:24px}.ai-hero{padding:18px;gap:14px}.ai-orb{width:48px;height:48px;min-width:48px}.ai-hero-copy h2{font-size:18px}.ai-hero-copy p{font-size:13px}.ai-prompt{width:100%;flex-basis:100%}.ai-alert-row{padding:15px}.ai-alert-copy strong{font-size:13.5px}.ai-alert-copy p{font-size:12.5px}.ai-alert-row>button{margin-left:0;width:100%;justify-content:center}.ai-summary{padding:17px}}
+
 /* Čvrsta ograničenja za korisničke avatare — uploadovana slika ne smije širiti layout */
 img.avatar-image,
 span.avatar-initials{
