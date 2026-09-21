@@ -32,7 +32,8 @@ export function DataProvider({children}){
    }
    if(saved.length)await load();
    setBackendOnline(true);setError('');
-  }catch(e){setData(d=>({...d,[key]:previous}));setBackendOnline(false);setError(e.message)}
+   return saved;
+  }catch(e){setData(d=>({...d,[key]:previous}));setBackendOnline(false);setError(e.message);throw e}
  };
  const value={...data,setClients:setter('clients'),setJobs:setter('jobs'),setOffers:setter('offers'),setInvoices:setter('invoices'),setStock:setter('stock'),setMaintenance:setter('maintenance'),loading,backendOnline,error,reload:load};
  return <DataContext.Provider value={value}>{children}</DataContext.Provider>
