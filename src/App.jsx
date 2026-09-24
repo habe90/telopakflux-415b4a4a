@@ -39,14 +39,6 @@ const clients = [
  {name:'Marić Stan', contact:'maric@email.com', city:'Zenica', jobs:3, value:'960 €', status:'Potencijalni', initials:'MS', color:'#fee2e2'}
 ];
 
-const teamUsersSeed = [
- {id:1,name:'Marko Kovač',email:'marko@telopak.ba',phone:'+387 61 111 222',role:'Administrator',status:'Aktivan',joined:'12.01.2024.',initials:'MK',color:'#dbeafe'},
- {id:2,name:'Ivan Kovač',email:'ivan@telopak.ba',phone:'+387 61 222 333',role:'Radnik na terenu',status:'Aktivan',joined:'03.03.2024.',initials:'IK',color:'#dcfce7'},
- {id:3,name:'Petar Jurić',email:'petar@telopak.ba',phone:'+387 61 333 444',role:'Radnik na terenu',status:'Aktivan',joined:'18.05.2024.',initials:'PJ',color:'#ede9fe'},
- {id:4,name:'Ana Horvat',email:'ana@telopak.ba',phone:'+387 61 444 555',role:'Kancelarija',status:'Aktivan',joined:'02.09.2024.',initials:'AH',color:'#fef3c7'},
- {id:5,name:'Nikola Babić',email:'nikola@telopak.ba',phone:'+387 61 555 666',role:'Radnik na terenu',status:'Neaktivan',joined:'11.11.2023.',initials:'NB',color:'#fee2e2'}
-];
-
 function Logo({brand}){return <div className="logo brand-sidebar-logo">{brand?.logo_data?<img src={brand.logo_data} alt={brand.app_name||'Logo'}/>:<img src={import.meta.env.BASE_URL + 'telopak-flux-logo.svg'} alt="TeloPak Flux"/>}</div>}
 
 class ErrorBoundary extends React.Component{
@@ -154,7 +146,8 @@ function roleClass(role){return role==='Administrator'?'admin':role==='Kancelari
 
 function NewUserModal({close,onCreate}){
  const [name,setName]=useState(''); const [email,setEmail]=useState(''); const [phone,setPhone]=useState(''); const [role,setRole]=useState('Radnik na terenu');
- const submit=e=>{e.preventDefault(); onCreate({name:name||'Novi korisnik',email:email||'novi@telopak.ba',phone,role}); close();}
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{await onCreate({name,email,phone,role});close()}catch(x){setError(x.message)}finally{setBusy(false)}}
  return <div className="modal-backdrop" onMouseDown={close}><div className="modal user-modal" onMouseDown={e=>e.stopPropagation()}>
   <div className="modal-head"><div><span className="modal-kicker">NOVI ČLAN TIMA</span><h2>Kreiraj korisnički račun</h2><p>Radniku ćemo poslati siguran link za postavljanje lozinke.</p></div><button className="icon-btn" onClick={close}><X/></button></div>
   <form onSubmit={submit}>
@@ -166,19 +159,21 @@ function NewUserModal({close,onCreate}){
      <select value={role} onChange={e=>setRole(e.target.value)}><option>Administrator</option><option>Kancelarija</option><option>Radnik na terenu</option></select>
      <span className="field-help">{role==='Administrator'?'Potpuni pristup sistemu, korisnicima i postavkama.':role==='Kancelarija'?'Pristup klijentima, poslovima, ponudama i računima.':'Pristup vlastitom rasporedu i dodijeljenim intervencijama.'}</span>
     </label>
-    <div className="modal-note full"><Info/> Pozivnica važi 48 sati. Korisnik samostalno postavlja lozinku, a administrator je nikada ne vidi.</div>
+    <div className="modal-note full"><Info/> Sistem kreira sigurnu privremenu lozinku i šalje je korisniku emailom. Nakon prve prijave treba je promijeniti.</div>
+    {error&&<p className="otp-error full"><AlertTriangle/> {error}</p>}
    </div>
-   <div className="modal-actions"><button type="button" className="secondary" onClick={close}>Odustani</button><button type="submit" className="primary"><Send/> Kreiraj i pošalji pozivnicu</button></div>
+   <div className="modal-actions"><button type="button" className="secondary" onClick={close}>Odustani</button><button type="submit" className="primary" disabled={busy}><Send/> {busy?'Kreiranje...':'Kreiraj i pošalji pristup'}</button></div>
   </form>
  </div></div>
 }
 
-function UserActionModal({user,mode,close,onSave,onToggle,onDelete,onNotice}){
+function UserActionModal({user,mode,close,onSave,onToggle,onDelete,onResend,onNotice}){
  const [form,setForm]=useState({...user});
  const set=(key,value)=>setForm(f=>({...f,[key]:value}));
  if(!user) return null;
  const title=mode==='edit'?'Uredi korisnika':mode==='resend'?'Ponovo pošalji pristup':mode==='status'?(user.status==='Aktivan'?'Deaktiviraj korisnika':'Aktiviraj korisnika'):mode==='delete'?'Trajno obriši korisnika':'Profil korisnika';
- const submit=e=>{e.preventDefault();if(mode==='edit'){onSave(form);onNotice('Podaci korisnika su uspješno ažurirani.')}if(mode==='resend')onNotice(`Nova pristupna pozivnica poslana je na ${user.email}.`);if(mode==='status'){onToggle(user.id);onNotice(user.status==='Aktivan'?'Pristup je odmah deaktiviran. Sve aktivne sesije su odjavljene.':'Korisnički pristup je ponovo aktiviran.');}if(mode==='delete'){onDelete(user.id);onNotice('Korisnički račun je trajno obrisan.');}close();};
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{if(mode==='edit'){await onSave(form);onNotice('Podaci korisnika su uspješno ažurirani.')}if(mode==='resend'){await onResend(user.id);onNotice(`Novi pristupni podaci poslani su na ${user.email}.`)}if(mode==='status'){await onToggle(user.id);onNotice(user.status==='Aktivan'?'Pristup je odmah deaktiviran. Sve aktivne sesije su odjavljene.':'Korisnički pristup je ponovo aktiviran.')}if(mode==='delete'){await onDelete(user.id);onNotice('Korisnički račun je trajno obrisan.')}close()}catch(x){setError(x.message)}finally{setBusy(false)}};
  return <div className="modal-backdrop" onMouseDown={close}><div className={`modal user-modal ${mode==='delete'?'danger-modal':''}`} onMouseDown={e=>e.stopPropagation()}>
   <div className="modal-head"><div><span className="modal-kicker">UPRAVLJANJE PRISTUPOM</span><h2>{title}</h2><p>{mode==='detail'?'Pregled naloga, pristupa i sigurnosnog statusa.':mode==='edit'?'Izmjene se primjenjuju odmah na cijeli radni prostor.':mode==='resend'?'Generišite novi siguran link za postavljanje lozinke.':mode==='delete'?'Ova radnja je nepovratna i odmah ukida pristup.':'Sigurnosna promjena vrijedi odmah na svim uređajima.'}</p></div><button className="icon-btn" onClick={close}><X/></button></div>
   <form onSubmit={submit}>
@@ -192,42 +187,36 @@ function UserActionModal({user,mode,close,onSave,onToggle,onDelete,onNotice}){
    {mode==='resend'&&<div className="confirm-content"><div className="confirm-icon blue"><Send/></div><h3>Poslati novu pozivnicu?</h3><p>Novi pristupni link poslat ćemo korisniku <strong>{user.name}</strong> na:</p><div className="confirm-email"><Mail/>{user.email}</div><div className="modal-note"><Info/> Prethodno poslani link automatski će prestati važiti. Nova pozivnica važi 48 sati.</div></div>}
    {mode==='status'&&<div className="confirm-content"><div className={`confirm-icon ${user.status==='Aktivan'?'amber':'green'}`}>{user.status==='Aktivan'?<Ban/>:<RotateCcw/>}</div><h3>{user.status==='Aktivan'?'Odmah ukinuti pristup?':'Ponovo omogućiti pristup?'}</h3><p>{user.status==='Aktivan'?<><strong>{user.name}</strong> će biti odjavljen sa svih uređaja i neće se moći ponovo prijaviti dok ga ne aktivirate.</>:<><strong>{user.name}</strong> će se ponovo moći prijaviti i koristiti aplikaciju prema dodijeljenoj ulozi.</>}</p>{user.status==='Aktivan'&&<label className="full reason-label">Razlog deaktivacije<select><option>Prestanak radnog odnosa</option><option>Privremeno odsustvo</option><option>Sigurnosni razlog</option><option>Drugo</option></select></label>}</div>}
    {mode==='delete'&&<div className="confirm-content"><div className="confirm-icon red"><Trash2/></div><h3>Ovo se ne može poništiti</h3><p>Nalog korisnika <strong>{user.name}</strong> bit će trajno obrisan. Poslovni zapisi koje je kreirao ostaju sačuvani radi evidencije.</p><label className="delete-check"><input type="checkbox" required/> Razumijem da je brisanje trajno i želim nastaviti.</label></div>}
-   <div className="modal-actions"><button type="button" className="secondary" onClick={close}>{mode==='detail'?'Zatvori':'Odustani'}</button>{mode!=='detail'&&<button type="submit" className={`primary ${mode==='delete'?'danger-primary':''}`}>{mode==='edit'?<><Check/> Sačuvaj izmjene</>:mode==='resend'?<><Send/> Pošalji pozivnicu</>:mode==='delete'?<><Trash2/> Trajno obriši</>:user.status==='Aktivan'?<><Ban/> Deaktiviraj pristup</>:<><RotateCcw/> Aktiviraj pristup</>}</button>}</div>
+   {error&&<p className="otp-error"><AlertTriangle/> {error}</p>}
+   <div className="modal-actions"><button type="button" className="secondary" onClick={close}>{mode==='detail'?'Zatvori':'Odustani'}</button>{mode!=='detail'&&<button disabled={busy} type="submit" className={`primary ${mode==='delete'?'danger-primary':''}`}>{busy?'Obrada...':mode==='edit'?<><Check/> Sačuvaj izmjene</>:mode==='resend'?<><Send/> Pošalji pristup</>:mode==='delete'?<><Trash2/> Trajno obriši</>:user.status==='Aktivan'?<><Ban/> Deaktiviraj pristup</>:<><RotateCcw/> Aktiviraj pristup</>}</button>}</div>
   </form>
  </div></div>
 }
 
-function InviteSentModal({user,close,onPreview}){
- return <div className="modal-backdrop" onMouseDown={close}><div className="modal invite-sent-modal" onMouseDown={e=>e.stopPropagation()}>
-  <div className="modal-head"><div><span className="modal-kicker">POZIVNICA POSLANA</span><h2>Provjerite email korisnika</h2><p>Poslali smo siguran link za postavljanje lozinke.</p></div><button className="icon-btn" onClick={close}><X/></button></div>
-  <div className="invite-sent-body">
-   <div className="otp-icon success"><Mail/></div>
-   <p>Pozivnica je poslana na <strong>{user.email}</strong>. Link važi 48 sati, a korisnik samostalno postavlja lozinku.</p>
-   <div className="invite-demo-box"><ShieldCheck/><div><strong>Demo prikaz</strong><span>Pošto aplikacija nema pravi email server, možete otvoriti tačno ono što bi korisnik vidio klikom na link iz emaila.</span></div></div>
-  </div>
-  <div className="modal-actions"><button className="secondary" onClick={close}>Zatvori</button><button className="primary" onClick={()=>{onPreview(user);close();}}>Prikaži pozivnicu (demo) <ArrowRight/></button></div>
- </div></div>
-}
-
-function UsersManagement({onPreviewInvite}){
- const [users,setUsers]=useState(teamUsersSeed); const [openModal,setOpenModal]=useState(false); const [action,setAction]=useState(null); const [notice,setNotice]=useState(''); const [inviteSent,setInviteSent]=useState(null);
+function UsersManagement(){
+ const [users,setUsers]=useState([]); const [openModal,setOpenModal]=useState(false); const [action,setAction]=useState(null); const [notice,setNotice]=useState(''); const [error,setError]=useState(''); const [loading,setLoading]=useState(true);
  const [search,setSearch]=useState(''); const [roleFilter,setRoleFilter]=useState('Sve uloge');
+ const teamApi=async(path='',options={})=>{const r=await fetch(`/api/team${path}`,{credentials:'include',headers:options.body?{'Content-Type':'application/json'}:undefined,...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Zahtjev nije uspio.');return d};
+ const decorate=u=>({...u,joined:new Date(u.created_at).toLocaleDateString('bs-BA'),initials:initials(u.name),color:'#dbeafe'});
+ const load=()=>{setLoading(true);teamApi().then(d=>{setUsers((Array.isArray(d)?d:[]).map(decorate));setError('')}).catch(e=>setError(e.message)).finally(()=>setLoading(false))};
+ useEffect(()=>{load()},[]);
  const filteredUsers=users.filter(u=>`${u.name} ${u.email} ${u.phone}`.toLowerCase().includes(search.toLowerCase()) && (roleFilter==='Sve uloge'||u.role===roleFilter));
- const toggleStatus=id=>setUsers(u=>u.map(x=>x.id===id?{...x,status:x.status==='Aktivan'?'Neaktivan':'Aktivan'}:x));
- const removeUser=id=>setUsers(u=>u.filter(x=>x.id!==id));
- const saveUser=user=>setUsers(u=>u.map(x=>x.id===user.id?{...user,initials:user.name.split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase()}:x));
  const notify=message=>{setNotice(message);window.setTimeout(()=>setNotice(''),4000)};
- const addUser=nu=>{const initials=nu.name.split(' ').filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();const palette=['#dbeafe','#dcfce7','#ede9fe','#fef3c7','#fee2e2'];setUsers(u=>[...u,{id:Date.now(),...nu,status:'Aktivan',joined:'Danas',initials,color:palette[u.length%palette.length]}]);setInviteSent(nu)};
+ const toggleStatus=async id=>{const user=users.find(x=>x.id===id);const saved=await teamApi(`/${id}`,{method:'PUT',body:JSON.stringify({status:user.status==='Aktivan'?'Neaktivan':'Aktivan'})});setUsers(a=>a.map(x=>x.id===id?decorate(saved):x))};
+ const removeUser=async id=>{await teamApi(`/${id}`,{method:'DELETE'});setUsers(a=>a.filter(x=>x.id!==id))};
+ const saveUser=async user=>{const saved=await teamApi(`/${user.id}`,{method:'PUT',body:JSON.stringify({name:user.name,email:user.email,phone:user.phone,role:user.role,status:user.status})});setUsers(a=>a.map(x=>x.id===user.id?decorate(saved):x))};
+ const addUser=async nu=>{const saved=await teamApi('',{method:'POST',body:JSON.stringify(nu)});setUsers(a=>[decorate(saved),...a]);notify(saved.emailDelivered?'Korisnik je kreiran i pristupni podaci su poslani emailom.':'Korisnik je kreiran, ali email nije poslan. Provjerite SMTP postavke.');return saved};
  const total=users.length; const active=users.filter(u=>u.status==='Aktivan').length; const inactive=total-active;
  const openAction=(user,mode)=>setAction({user,mode});
  return <>
   <div className="page-head"><div><p className="eyebrow">ADMINISTRACIJA TIMA</p><h1>Korisnici i pristup</h1><p>Upravljajte nalozima zaposlenih i njihovim pristupom aplikaciji.</p></div><button className="primary" onClick={()=>setOpenModal(true)}><Plus/> Novi korisnik</button></div>
   <section className="security-banner"><div className="security-icon"><ShieldCheck/></div><div><strong>Sigurnost sistema</strong><p>Čim neko napusti firmu, deaktivirajte njegov nalog. Aktivne sesije bit će prekinute, a pristup poslovnim podacima odmah blokiran.</p></div></section>
   <section className="stats-grid mini"><Stat title="Ukupno korisnika" value={String(total)} meta="Svi nalozi u sistemu" icon={UserCog} tone="blue"/><Stat title="Aktivni nalozi" value={String(active)} meta="Trenutno imaju pristup" icon={CheckCircle2} tone="green"/><Stat title="Neaktivni / blokirani" value={String(inactive)} meta="Bez pristupa aplikaciji" icon={Ban} tone="red"/></section>
+  {error&&<div className="schedule-warning"><AlertTriangle/> {error}</div>}
   <section className="card"><div className="user-table-head"><div><h3>Svi korisnici</h3><p>{filteredUsers.length} od {total} naloga povezanih sa vašom firmom</p></div><div className="user-table-controls"><div className="search-inner"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pretraži članove tima..."/></div><select className="role-filter-select" value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}><option>Sve uloge</option><option>Administrator</option><option>Kancelarija</option><option>Radnik na terenu</option></select></div></div>
-   <div className="table-wrap"><table><thead><tr><th>Korisnik</th><th>Kontakt</th><th>Uloga</th><th>Pridružen</th><th>Status</th><th>Akcije</th></tr></thead><tbody>{!filteredUsers.length&&<tr><td colSpan={6} className="empty-row">Nema korisnika za odabranu pretragu ili filter.</td></tr>}{filteredUsers.map(u=><tr key={u.id} className="clickable-row" onClick={()=>openAction(u,'detail')}><td><div className="client-cell"><span className="avatar square" style={{background:u.color}}>{u.initials}</span><strong>{u.name}</strong></div></td><td><div className="contact-cell"><span>{u.email}</span><small>{u.phone}</small></div></td><td><span className={`role-badge ${roleClass(u.role)}`}>{u.role}</span></td><td>{u.joined}</td><td><Badge>{u.status}</Badge></td><td><div className="row-actions" onClick={e=>e.stopPropagation()}><button className="action-text-btn" onClick={()=>openAction(u,'edit')}>Uredi</button><button className="icon-btn sm" title="Pošalji pristup" onClick={()=>openAction(u,'resend')}><Send/></button><button className="icon-btn sm" title={u.status==='Aktivan'?'Deaktiviraj':'Aktiviraj'} onClick={()=>openAction(u,'status')}>{u.status==='Aktivan'?<Ban/>:<RotateCcw/>}</button><button className="icon-btn sm danger" title="Obriši" onClick={()=>openAction(u,'delete')}><Trash2/></button></div></td></tr>)}</tbody></table></div>
+   <div className="table-wrap"><table><thead><tr><th>Korisnik</th><th>Kontakt</th><th>Uloga</th><th>Pridružen</th><th>Status</th><th>Akcije</th></tr></thead><tbody>{loading&&<tr><td colSpan={6} className="empty-row">Učitavanje korisnika...</td></tr>}{!loading&&!filteredUsers.length&&<tr><td colSpan={6} className="empty-row">Nema korisnika za odabranu pretragu ili filter.</td></tr>}{filteredUsers.map(u=><tr key={u.id} className="clickable-row" onClick={()=>openAction(u,'detail')}><td><div className="client-cell"><span className="avatar square" style={{background:u.color}}>{u.initials}</span><strong>{u.name}</strong></div></td><td><div className="contact-cell"><span>{u.email}</span><small>{u.phone}</small></div></td><td><span className={`role-badge ${roleClass(u.role)}`}>{u.role}</span></td><td>{u.joined}</td><td><Badge>{u.status}</Badge></td><td><div className="row-actions" onClick={e=>e.stopPropagation()}><button className="action-text-btn" onClick={()=>openAction(u,'edit')}>Uredi</button><button className="icon-btn sm" title="Pošalji pristup" onClick={()=>openAction(u,'resend')}><Send/></button><button className="icon-btn sm" title={u.status==='Aktivan'?'Deaktiviraj':'Aktiviraj'} onClick={()=>openAction(u,'status')}>{u.status==='Aktivan'?<Ban/>:<RotateCcw/>}</button><button className="icon-btn sm danger" title="Obriši" onClick={()=>openAction(u,'delete')}><Trash2/></button></div></td></tr>)}</tbody></table></div>
   </section>
-  {openModal&&<NewUserModal close={()=>setOpenModal(false)} onCreate={addUser}/>} {action&&<UserActionModal {...action} close={()=>setAction(null)} onSave={saveUser} onToggle={toggleStatus} onDelete={removeUser} onNotice={notify}/>} {inviteSent&&<InviteSentModal user={inviteSent} close={()=>setInviteSent(null)} onPreview={onPreviewInvite}/>} {notice&&<div className="toast"><CheckCircle2/><div><strong>Uspješno</strong><span>{notice}</span></div><button onClick={()=>setNotice('')}><X/></button></div>}
+  {openModal&&<NewUserModal close={()=>setOpenModal(false)} onCreate={addUser}/>} {action&&<UserActionModal {...action} close={()=>setAction(null)} onSave={saveUser} onToggle={toggleStatus} onDelete={removeUser} onResend={id=>teamApi(`/${id}/resend`,{method:'POST'})} onNotice={notify}/>} {notice&&<div className="toast"><CheckCircle2/><div><strong>Uspješno</strong><span>{notice}</span></div><button onClick={()=>setNotice('')}><X/></button></div>}
  </>
 }
 
@@ -534,7 +523,7 @@ function AppShell(){
    'AI pomoćnik':<AIAssistant/>,
    'Izvještaji':<ReportsModule/>,
    'Postavke':<SettingsModule/>,
-   'Korisnici':<UsersManagement onPreviewInvite={setInviteView}/>
+   'Korisnici':<UsersManagement/>
   };
   return page==='Početna'?<Dashboard openNew={()=>setModal(true)} go={go} notify={notify} profile={profile}/>:screens[page];
  },[page,isOwner,profile]);
