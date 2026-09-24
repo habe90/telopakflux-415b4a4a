@@ -1,0 +1,10 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const app=fs.readFileSync('src/App.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8');
+assert(!app.includes('teamUsersSeed'),'Korisnički dio ne smije imati mock listu članova tima');
+assert(app.includes("fetch(`/api/team${path}`"),'Korisnici firme moraju dolaziti iz API-ja');
+assert(server.includes("app.get('/api/team'"),'Backend mora imati listu korisnika firme');
+assert(server.includes("app.post('/api/team'"),'Backend mora kreirati korisnike firme');
+assert(server.includes("app.put('/api/team/:id'"),'Backend mora uređivati i deaktivirati korisnike firme');
+assert(server.includes("app.delete('/api/team/:id'"),'Backend mora brisati korisnike unutar iste firme');
+assert(server.includes("company_id=$2"),'Team upiti moraju biti ograničeni na firmu prijavljenog administratora');
+console.log('Team users tests passed');
