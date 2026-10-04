@@ -2,7 +2,7 @@ import React,{createContext,useContext,useEffect,useRef,useState} from 'react';
 
 const DataContext=createContext(null);
 const resources={clients:'clients',jobs:'jobs',offers:'offers',invoices:'invoices',stock:'stock',maintenance:'maintenance'};
-const empty={clients:[],jobs:[],offers:[],invoices:[],stock:[],maintenance:[]};
+const empty={clients:[],jobs:[],offers:[],invoices:[],stock:[],maintenance:[],workers:[]};
 
 async function request(path,options={}){
  const r=await fetch(`/api/${path}`,{credentials:'include',headers:options.body?{'Content-Type':'application/json'}:undefined,...options});
@@ -14,7 +14,7 @@ async function request(path,options={}){
 export function DataProvider({children}){
  const[data,setData]=useState(empty),[loading,setLoading]=useState(true),[backendOnline,setBackendOnline]=useState(true),[error,setError]=useState('');
  const dataRef=useRef(data);useEffect(()=>{dataRef.current=data},[data]);
- const load=async()=>{setLoading(true);setError('');try{const values=await Promise.all(Object.values(resources).map(x=>request(x)));const next={};Object.keys(resources).forEach((k,i)=>next[k]=Array.isArray(values[i])?values[i]:[]);setData(next);setBackendOnline(true)}catch(e){setData(empty);setBackendOnline(false);setError(e.message)}finally{setLoading(false)}};
+ const load=async()=>{setLoading(true);setError('');try{const resourceKeys=Object.keys(resources);const values=await Promise.all([...Object.values(resources).map(x=>request(x)),request('team')]);const next={};resourceKeys.forEach((k,i)=>next[k]=Array.isArray(values[i])?values[i]:[]);next.workers=Array.isArray(values[resourceKeys.length])?values[resourceKeys.length].filter(u=>u.status==='Aktivan'&&u.role!=='Platform Owner'):[];setData(next);setBackendOnline(true)}catch(e){setData(empty);setBackendOnline(false);setError(e.message)}finally{setLoading(false)}};
  useEffect(()=>{load()},[]);
  const setter=key=>async updater=>{
   const previous=dataRef.current[key];
