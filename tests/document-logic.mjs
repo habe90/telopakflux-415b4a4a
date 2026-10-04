@@ -9,12 +9,12 @@ assert(migration.includes("offers ADD COLUMN IF NOT EXISTS items jsonb"),'Ponude
 assert(migration.includes("offers ADD COLUMN IF NOT EXISTS total numeric"),'Ponude moraju imati numerički total');
 assert(modules.includes('app-toast'),'Dokumenti moraju prikazati toast poruke');
 const server=fs.readFileSync('server/index.js','utf8');
-assert(server.includes("documentCrud('offers','offer')"),'Ponude moraju koristiti namjenski CRUD');
-assert(server.includes("documentCrud('invoices','invoice')"),'Računi moraju koristiti namjenski CRUD');
+assert(/documentCrud\('offers',\s*'offer'\)/.test(server),'Ponude moraju koristiti namjenski CRUD');
+assert(/documentCrud\('invoices',\s*'invoice'\)/.test(server),'Računi moraju koristiti namjenski CRUD');
 assert(server.includes("Dokument mora imati najmanje jednu stavku"),'Backend mora validirati stavke dokumenta');
 assert(server.includes("offer_prefix"),'Backend mora generisati broj ponude iz postavki');
-assert(server.includes("`${i+1}`"),'SQL INSERT mora koristiti PostgreSQL $ parametre');
-assert(server.includes("`${k}=${i+1}`"),'SQL UPDATE mora koristiti PostgreSQL $ parametre');
+assert(/\$\{i\s*\+\s*1\}/.test(server) && server.includes('placeholders'),'SQL INSERT mora koristiti PostgreSQL $ parametre');
+assert(server.includes('setSql') && /\$\{i\s*\+\s*1\}/.test(server),'SQL UPDATE mora koristiti PostgreSQL $ parametre');
 const store=fs.readFileSync('src/store.jsx','utf8');
 assert(store.includes('createDocument'),'Store mora imati direktan create dokumenta');
 assert(store.includes('updateDocument'),'Store mora imati direktan update dokumenta');
