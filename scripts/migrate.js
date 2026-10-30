@@ -119,6 +119,14 @@ async function run() {
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_amount numeric(12,2) NOT NULL DEFAULT 0`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS total numeric(12,2) NOT NULL DEFAULT 0`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS currency text NOT NULL DEFAULT 'EUR'`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS invoice_payments (
+    id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    invoice_id int NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    amount numeric(12,2) NOT NULL CHECK(amount>0), paid_at timestamptz NOT NULL DEFAULT now(),
+    note text NOT NULL DEFAULT '', created_by int REFERENCES app_users(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_invoice_payments_company_date ON invoice_payments(company_id,paid_at DESC)`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS sent_at timestamptz`);
   await pool.query(`CREATE TABLE IF NOT EXISTS reminder_drafts (
     id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
