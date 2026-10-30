@@ -1,0 +1,11 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const auth=fs.readFileSync('src/Auth.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8'),modules=fs.readFileSync('src/Modules.jsx','utf8');
+assert(auth.includes('Puni naziv firme'),'Registracija mora tražiti puni naziv firme');
+assert(auth.includes('Veličina tima'),'Registracija mora nuditi veličinu tima');
+assert(auth.includes('Poštanski broj')&&auth.includes('Adresa firme'),'Registracija mora tražiti adresu');
+assert(auth.includes('SIRET')&&auth.includes('TVA broj'),'Registracija mora imati francuske poslovne podatke');
+assert(server.includes("country:'France'")||server.includes("'France'"),'Država firme mora biti France');
+assert(server.includes('^\\d{14}$'),'Backend mora provjeriti 14 cifara SIRET-a');
+assert(migration.includes('postal_code text')&&migration.includes('siret text'),'Migracija mora čuvati tekstualne identifikatore');
+assert(modules.includes('postalCode')&&modules.includes('tvaNumber'),'Postavke moraju omogućiti naknadnu izmjenu poslovnih podataka');
+console.log('Company registration tests passed');
