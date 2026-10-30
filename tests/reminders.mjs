@@ -1,0 +1,13 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const ai=fs.readFileSync('src/AIAssistant.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+assert(ai.includes('Pripremi podsjetnik'),'Rezultati moraju nuditi pripremu podsjetnika');
+assert(ai.includes('Pregled podsjetnika'),'Mora postojati pregled prije slanja');
+for(const x of ['Odustani','Sačuvaj nacrt','Pošalji podsjetnik'])assert(ai.includes(x),`Nedostaje akcija ${x}`);
+assert(server.includes("app.get('/api/reminders/prepare/:type/:id'"),'Backend mora pripremiti podsjetnik iz stvarnih podataka');
+assert(server.includes("app.post('/api/reminders/draft'"),'Backend mora čuvati nacrt');
+assert(server.includes("app.post('/api/reminders/send'"),'Backend mora slati podsjetnik');
+assert(server.includes('idempotency_key'),'Slanje mora spriječiti duplikate');
+assert(server.includes("ctx.status==='Plaćen'||ctx.remaining<=0"),'Prije slanja mora se ponovo provjeriti dug');
+assert(migration.includes('CREATE TABLE IF NOT EXISTS reminder_drafts'),'Podsjetnici moraju imati trajnu evidenciju');
+assert(server.includes("sendSecurityEmail({to:email"),'Podsjetnik mora koristiti postojeći email servis');
+console.log('Reminder tests passed');
