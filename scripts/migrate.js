@@ -119,6 +119,17 @@ async function run() {
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_amount numeric(12,2) NOT NULL DEFAULT 0`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS total numeric(12,2) NOT NULL DEFAULT 0`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS currency text NOT NULL DEFAULT 'EUR'`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS sent_at timestamptz`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS reminder_drafts (
+    id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    created_by int REFERENCES app_users(id) ON DELETE SET NULL,
+    record_type text NOT NULL CHECK(record_type IN ('invoice','offer')), record_id int NOT NULL,
+    recipient_name text NOT NULL DEFAULT '', recipient_email text NOT NULL DEFAULT '',
+    subject text NOT NULL DEFAULT '', message text NOT NULL DEFAULT '', status text NOT NULL DEFAULT 'draft',
+    sent_at timestamptz, outcome text, provider_message text, idempotency_key text UNIQUE,
+    created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_reminder_drafts_record ON reminder_drafts(company_id,record_type,record_id,created_at DESC)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS platform_audit_log (
     id bigserial PRIMARY KEY, actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL,
     action text NOT NULL, target_type text, target_id text, metadata jsonb DEFAULT '{}'::jsonb,
