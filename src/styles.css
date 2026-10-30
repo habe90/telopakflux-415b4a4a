@@ -336,6 +336,28 @@
 @media(max-width:900px){.ai-result-table{border:0;background:transparent;display:grid;gap:10px;overflow:visible}.ai-result-row.head{display:none}.ai-result-row{display:grid;grid-template-columns:1fr 1fr;border:1px solid #e1e8f0!important;border-radius:10px;background:#fff;padding:8px}.ai-result-row span{padding:7px 8px}.ai-result-row span:before{content:attr(data-label);display:block;color:#8594a5;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}.ai-result-row span:last-child{grid-column:1/-1}.ai-result-row button{width:100%;min-height:38px}.ai-result-error{margin-left:0}}
 @media(max-width:520px){.ai-results{padding:15px!important}.ai-result-row{grid-template-columns:1fr}.ai-result-row span:last-child{grid-column:auto}.ai-result-foot{align-items:flex-start;flex-direction:column}}
 
+/* Fino poravnanje kartice odgovora i stvarna HTML tabela */
+.ai-answer-head{position:relative;display:flex!important;align-items:flex-start!important;gap:12px!important;padding-right:40px}
+.ai-answer-head>.ai-answer-icon{width:40px!important;height:40px!important;min-width:40px!important;max-width:40px;flex:0 0 40px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:0!important;padding:0!important;border-radius:10px}
+.ai-answer-head>.ai-answer-icon svg{width:20px!important;height:20px!important;margin:0!important;position:static!important;transform:none!important;flex:none}
+.ai-answer-head>div:nth-child(2){display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
+.ai-answer-head .ai-asked-question{margin:0!important;font-size:11px;line-height:1.4}
+.ai-answer-head strong{font-size:14px;line-height:1.35}
+.ai-answer-head .ai-result-scope{margin:1px 0 0!important;font-size:11px;line-height:1.4}
+.ai-answer-head>.icon-btn{position:absolute;right:0;top:0;margin:0}
+.ai-result-table-wrap{width:100%;overflow-x:auto;border:1px solid #e1e8f0;border-radius:10px;background:#fff}
+.ai-result-table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff}
+.ai-result-table th,.ai-result-table td{padding:12px 11px;border-bottom:1px solid #e7edf3;text-align:left;vertical-align:middle;overflow-wrap:anywhere}
+.ai-result-table thead th{background:#f5f8fb;color:#6e8093;font-size:12px;font-weight:800;letter-spacing:.02em}
+.ai-result-table tbody td{color:#34485e;font-size:14px;line-height:1.4}
+.ai-result-table tbody tr:last-child td{border-bottom:0}
+.ai-result-table.type-offers th:nth-child(3),.ai-result-table.type-offers td:nth-child(3),.ai-result-table.type-invoices th:nth-child(4),.ai-result-table.type-invoices td:nth-child(4){text-align:right}
+.ai-result-table.type-offers th:nth-child(4),.ai-result-table.type-offers td:nth-child(4),.ai-result-table.type-offers th:nth-child(5),.ai-result-table.type-offers td:nth-child(5),.ai-result-table.type-invoices th:nth-child(3),.ai-result-table.type-invoices td:nth-child(3){text-align:center}
+.ai-result-table.type-offers th:nth-child(1){width:11%}.ai-result-table.type-offers th:nth-child(2){width:18%}.ai-result-table.type-offers th:nth-child(3){width:13%}.ai-result-table.type-offers th:nth-child(4){width:13%}.ai-result-table.type-offers th:nth-child(5){width:13%}.ai-result-table.type-offers th:nth-child(6){width:13%}.ai-result-table.type-offers th:nth-child(7){width:19%}
+.ai-result-table td button{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #c9d9eb;background:#f5f9fe;color:#1769d2;border-radius:7px;padding:8px 9px;font-size:11px;font-weight:700;white-space:nowrap}.ai-result-table td button svg{width:12px;height:12px}.ai-result-table td button:hover{background:#e9f3ff;border-color:#91b9e6}.ai-result-table td button:focus-visible{outline:3px solid rgba(23,105,210,.18);outline-offset:1px}
+@media(max-width:900px){.ai-result-table-wrap{border:0;background:transparent;overflow:visible}.ai-result-table,.ai-result-table tbody{display:block}.ai-result-table thead{display:none}.ai-result-table tbody{display:grid;gap:10px}.ai-result-table tr{display:grid;grid-template-columns:1fr 1fr;border:1px solid #e1e8f0;border-radius:10px;background:#fff;padding:8px}.ai-result-table td{display:block;text-align:left!important;border:0;padding:7px 8px;font-size:13px}.ai-result-table td:before{content:attr(data-label);display:block;color:#8594a5;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}.ai-result-table td:last-child{grid-column:1/-1}.ai-result-table td button{width:100%;min-height:40px}}
+@media(max-width:520px){.ai-result-table tr{grid-template-columns:1fr}.ai-result-table td:last-child{grid-column:auto}}
+
 /* AI pomoćnik — bolja čitljivost i jasnija vizuelna hijerarhija */
 .ai-page-head h1{font-size:32px;line-height:1.15}
 .ai-page-head>div>p:last-child{font-size:14px;line-height:1.55;color:#65758a}
