@@ -1,12 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 12 672 112" role="img" aria-label="TeloPakFlux" preserveAspectRatio="xMinYMid meet">
-  <g fill="#ef1470">
-    <path d="M14 30h116l-25 24H14l24-24z"/>
-    <path d="M62 57h33v62L62 86V57z"/>
-    <path d="M98 57h24l27-27h30l-57 57-24 20V57z"/>
-    <path d="M117 17h38l12 12-12 12h-9l7-8h-35v-6h35l-7-7z" fill="#0a0a0a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 92" role="img" aria-label="TeloPak Flux logo">
+  <rect width="420" height="92" rx="12" fill="#ffffff"/>
+  <g transform="translate(18 15)">
+    <path d="M0 8h42L30 20H0L12 8z" fill="#ef1470"/>
+    <path d="M18 22h16v32L18 38V22z" fill="#ef1470"/>
+    <path d="M36 22h12L62 8h15L48 37 36 47V22z" fill="#ef1470"/>
+    <path d="M46 2h20l7 7-7 7h-5l4-4H47V8h18l-4-4z" fill="#111a3f"/>
   </g>
-  <g font-family="Arial Black,Arial,sans-serif" font-weight="900" font-style="italic">
-    <text x="140" y="88" font-size="67" fill="#ffffff" letter-spacing="-5">TeloPak</text>
-    <text x="500" y="88" font-size="67" fill="#ef1470" letter-spacing="-5">Flux</text>
-  </g>
+  <text x="92" y="58" font-family="Inter,Arial,sans-serif" font-size="40" font-weight="800" fill="#111a3f">TeloPak</text>
+  <text x="244" y="58" font-family="Inter,Arial,sans-serif" font-size="40" font-weight="800" fill="#ef1470">Flux</text>
 </svg>
