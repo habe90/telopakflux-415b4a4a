@@ -8,7 +8,7 @@
     "build": "vite build",
     "start": "node server/index.js",
     "db:migrate": "node scripts/migrate.js",
-    "test": "node --check server/index.js && node --check server/auth.js && node tests/static-integrity.mjs && node tests/document-logic.mjs && node tests/notification-logic.mjs && node tests/owner-user-create.mjs && node tests/team-users.mjs && node tests/real-workers.mjs && node tests/company-registration.mjs && node tests/assistant-navigation.mjs && node tests/assistant-quick-questions.mjs && node tests/assistant-results.mjs && node tests/assistant-table-layout.mjs && node tests/reminders.mjs && node tests/assistant-data-states.mjs && node tests/assistant-functional.mjs"
+    "test": "node --check server/index.js && node --check server/auth.js && node tests/static-integrity.mjs && node tests/document-logic.mjs && node tests/notification-logic.mjs && node tests/owner-user-create.mjs && node tests/team-users.mjs && node tests/real-workers.mjs && node tests/company-registration.mjs && node tests/assistant-navigation.mjs && node tests/assistant-quick-questions.mjs && node tests/assistant-results.mjs && node tests/assistant-table-layout.mjs && node tests/reminders.mjs && node tests/assistant-data-states.mjs && node tests/assistant-functional.mjs && node tests/routing.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "4.3.4",
