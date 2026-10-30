@@ -1,0 +1,12 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const router=fs.readFileSync('src/router.js','utf8'),app=fs.readFileSync('src/App.jsx','utf8'),modules=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8');
+for(const path of ['/clients','/jobs','/schedule','/offers','/invoices','/stock','/maintenance','/assistant','/reports','/users','/settings'])assert(router.includes(`'${path}'`),`Nedostaje ruta ${path}`);
+for(const resource of ['clients','jobs','offers','invoices','stock','maintenance','users'])assert(router.includes(resource),`Nedostaje detaljna ruta ${resource}`);
+assert(app.includes("window.addEventListener('popstate',sync)"),'Browser Nazad/Naprijed mora sinhronizovati aplikaciju');
+assert(app.includes('initialRoute.current.page'),'Početna stranica mora doći iz URL-a');
+assert(app.includes('requestedInternalUrl()'),'Tražena adresa mora preživjeti prijavu');
+assert(app.includes("page===name?'active':''"),'Aktivni meni mora pratiti trenutnu rutu');
+assert(modules.includes("useRouteState('q','')")&&modules.includes("useRouteState('status','Svi statusi')"),'Pretraga i filteri moraju biti u URL-u');
+assert(modules.includes("useRouteState('view','week')")&&modules.includes("useRouteState('tab','Firma')"),'Raspored i kartica postavki moraju biti u URL-u');
+assert(server.includes("app.get('*'"),'Express mora imati SPA fallback za direktne interne URL-ove');
+console.log('Routing tests passed');
