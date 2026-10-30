@@ -1,0 +1,12 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const app=fs.readFileSync('src/App.jsx','utf8');
+assert(app.includes('const DASHBOARD_DEMO_MODE=true'),'Demo početna mora imati jedan prekidač');
+assert(app.includes('function demoDashboard(days=7)'),'Demo podaci moraju biti odvojeni od stvarnih');
+for(const v of ['18420','active_jobs:24','open_offers:8','outstanding:2150'])assert(app.includes(v),`Nedostaje demo vrijednost ${v}`);
+assert((app.match(/client:/g)||[]).length>=4,'Demo raspored mora imati četiri klijenta');
+assert(app.includes("status:'Hitno'"),'Jedna demo intervencija mora biti hitna');
+assert(app.includes('alerts:[')&&app.includes('latest_invoices:['),'Upozorenja i računi moraju imati demo skupove');
+assert(app.includes('Array.from({length:days}'),'Grafikon mora generisati 7 ili 30 dana');
+assert(app.includes('demo-data-badge')&&app.includes('Demo podaci'),'Zaglavlje mora označiti demo podatke');
+assert(app.includes("!DASHBOARD_DEMO_MODE&&go"),'Demo zapisi ne smiju otvarati stvarne zapise');
+console.log('Dashboard demo tests passed');
