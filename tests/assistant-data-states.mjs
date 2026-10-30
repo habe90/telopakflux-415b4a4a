@@ -1,0 +1,10 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const ai=fs.readFileSync('src/AIAssistant.jsx','utf8'),store=fs.readFileSync('src/store.jsx','utf8');
+for(const text of ['Učitavam podatke…','Podaci su ažurirani','Posljednje osvježavanje:','Podatke trenutno nije moguće učitati.','Podaci iz prethodnog osvježavanja','Pokušaj ponovo','Osvježi','SAŽETAK POSLOVANJA'])assert(ai.includes(text),`Nedostaje stanje: ${text}`);
+assert(ai.includes("loading&&!hasLoaded?'—'") ,'Nepoznate brojke moraju prikazati crticu');
+assert(ai.includes('Još nemate unesenih poslova')&&ai.includes('Dodaj posao'),'Prazan modul mora imati jasnu akciju');
+assert(ai.includes('Trenutno nema stavki koje zahtijevaju pažnju.'),'Prazna upozorenja moraju imati posebno stanje');
+assert(store.includes('setLastUpdated(new Date())'),'Vrijeme se smije ažurirati samo nakon uspješnog učitavanja');
+assert(!store.includes('catch(e){setData(empty)'),'Greška ne smije obrisati prethodno učitane podatke');
+assert(ai.includes('if(askedQuestion)await submitQuestion(askedQuestion)'),'Osvježavanje mora ponoviti trenutno pitanje');
+console.log('Assistant data states tests passed');
