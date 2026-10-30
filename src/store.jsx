@@ -12,10 +12,10 @@ async function request(path,options={}){
 }
 
 export function DataProvider({children}){
- const[data,setData]=useState(empty),[loading,setLoading]=useState(true),[backendOnline,setBackendOnline]=useState(true),[error,setError]=useState('');
+ const[data,setData]=useState(empty),[loading,setLoading]=useState(true),[backendOnline,setBackendOnline]=useState(true),[error,setError]=useState(''),[lastUpdated,setLastUpdated]=useState(null),[hasLoaded,setHasLoaded]=useState(false);
  const dataRef=useRef(data);useEffect(()=>{dataRef.current=data},[data]);
- const load=async()=>{setLoading(true);setError('');try{const resourceKeys=Object.keys(resources);const values=await Promise.all([...Object.values(resources).map(x=>request(x)),request('team')]);const next={};resourceKeys.forEach((k,i)=>next[k]=Array.isArray(values[i])?values[i]:[]);next.workers=Array.isArray(values[resourceKeys.length])?values[resourceKeys.length].filter(u=>u.status==='Aktivan'&&u.role!=='Platform Owner'):[];setData(next);setBackendOnline(true)}catch(e){setData(empty);setBackendOnline(false);setError(e.message)}finally{setLoading(false)}};
- useEffect(()=>{load()},[]);
+ const load=async()=>{setLoading(true);setError('');try{const resourceKeys=Object.keys(resources);const values=await Promise.all([...Object.values(resources).map(x=>request(x)),request('team')]);const next={};resourceKeys.forEach((k,i)=>next[k]=Array.isArray(values[i])?values[i]:[]);next.workers=Array.isArray(values[resourceKeys.length])?values[resourceKeys.length].filter(u=>u.status==='Aktivan'&&u.role!=='Platform Owner'):[];setData(next);setBackendOnline(true);setLastUpdated(new Date());setHasLoaded(true);return next}catch(e){setBackendOnline(false);setError(e.message);throw e}finally{setLoading(false)}};
+ useEffect(()=>{load().catch(()=>{})},[]);
  const setter=key=>async updater=>{
   const previous=dataRef.current[key];
   const next=typeof updater==='function'?updater(previous):updater;
@@ -44,7 +44,7 @@ export function DataProvider({children}){
  const createDocument=(kind,payload)=>documentRequest(kind,'POST',payload);
  const updateDocument=(kind,id,payload)=>documentRequest(kind,'PUT',payload,id);
  const deleteDocument=(kind,id)=>documentRequest(kind,'DELETE',null,id);
- const value={...data,setClients:setter('clients'),setJobs:setter('jobs'),setOffers:setter('offers'),setInvoices:setter('invoices'),setStock:setter('stock'),setMaintenance:setter('maintenance'),createDocument,updateDocument,deleteDocument,loading,backendOnline,error,reload:load};
+ const value={...data,setClients:setter('clients'),setJobs:setter('jobs'),setOffers:setter('offers'),setInvoices:setter('invoices'),setStock:setter('stock'),setMaintenance:setter('maintenance'),createDocument,updateDocument,deleteDocument,loading,backendOnline,error,lastUpdated,hasLoaded,reload:load};
  return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }
 export function useData(){return useContext(DataContext)}
