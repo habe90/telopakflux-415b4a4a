@@ -1,0 +1,11 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const ai=fs.readFileSync('src/AIAssistant.jsx','utf8'),app=fs.readFileSync('src/App.jsx','utf8'),modules=fs.readFileSync('src/Modules.jsx','utf8');
+assert(ai.includes('function ResultList'),'Pomoćnik mora imati strukturirani prikaz rezultata');
+for(const label of ['Otvori račun','Otvori ponudu','Otvori termin','Otvori posao','Prikaži sve'])assert(ai.includes(label),`Nedostaje akcija ${label}`);
+assert(ai.includes('_remaining')&&ai.includes('total-paid'),'Kašnjenje mora koristiti preostali dug nakon uplata');
+assert(ai.includes("!['Nacrt','Plaćen'].includes(i.status)"),'Nacrt i plaćeni računi ne smiju biti zakašnjeli');
+assert(ai.includes('_daysLate'),'Mora se računati broj dana kašnjenja');
+assert(ai.includes('slice(0,5)'),'Mora se prikazati prvih pet rezultata');
+assert(app.includes('openAssistantRecord'),'App mora povezati rezultate s modulima');
+assert(modules.includes('openIntent'),'Moduli moraju otvoriti tačan zapis po ID-u');
+console.log('Assistant structured results tests passed');
