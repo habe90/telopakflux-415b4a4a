@@ -507,7 +507,7 @@ function AppShell(){
  const isOwner=profile?.isPlatformOwner||profile?.role==='Platform Owner';
  const go=p=>{setPage(current=>{if(p==='AI pomoćnik'&&current!=='AI pomoćnik')previousInternalPage.current=current;return p});setMobile(false)};
  const leaveAssistant=()=>{const target=previousInternalPage.current&&previousInternalPage.current!=='AI pomoćnik'?previousInternalPage.current:'Početna';previousInternalPage.current=null;setPage(target);setMobile(false)};
- const openAssistantRecord=(target,id,filter)=>{setRecordIntent({id:String(id),filter,nonce:Date.now()});setPage(target);setMobile(false)};
+ const openAssistantRecord=(target,id,filter)=>{setRecordIntent({id:id==null?null:String(id),filter,nonce:Date.now()});setPage(target);setMobile(false)};
  useEffect(()=>{if(authed&&isOwner&&!ownerNavItems.some(([n])=>n===page))setPage('Owner pregled')},[authed,isOwner]);
  const content=useMemo(()=>{
   if(isOwner){
