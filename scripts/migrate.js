@@ -92,6 +92,13 @@ async function run() {
   await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS plan text NOT NULL DEFAULT 'Trial'`);
   await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS trial_ends_at timestamptz DEFAULT (now()+interval '14 days')`);
   await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS monthly_price numeric(10,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS address text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS postal_code text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS city text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'France'`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS siret text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS tva_number text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS company_phone text NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
@@ -136,7 +143,7 @@ async function run() {
   await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS two_factor_backup_hashes jsonb DEFAULT '[]'::jsonb`);
   await pool.query(`CREATE TABLE IF NOT EXISTS company_settings (
     company_id int PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
-    company_name text NOT NULL DEFAULT '', tax_id text DEFAULT '', address text DEFAULT '', city text DEFAULT '',
+    company_name text NOT NULL DEFAULT '', tax_id text DEFAULT '', siret text DEFAULT '', tva_number text DEFAULT '', postal_code text DEFAULT '', country text NOT NULL DEFAULT 'France', address text DEFAULT '', city text DEFAULT '',
     phone text DEFAULT '', email text DEFAULT '', website text DEFAULT '', logo_data text,
     currency text NOT NULL DEFAULT 'EUR', tax_rate numeric(6,2) NOT NULL DEFAULT 17,
     invoice_prefix text NOT NULL DEFAULT 'R-', offer_prefix text NOT NULL DEFAULT 'PN-',
@@ -146,6 +153,10 @@ async function run() {
     notify_maintenance boolean NOT NULL DEFAULT true, email_notifications boolean NOT NULL DEFAULT true,
     session_timeout_minutes int NOT NULL DEFAULT 10080, updated_at timestamptz DEFAULT now()
   )`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS siret text DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS tva_number text DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS postal_code text DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'France'`);
   await pool.query(`CREATE TABLE IF NOT EXISTS company_audit_log (
     id bigserial PRIMARY KEY, company_id int REFERENCES companies(id) ON DELETE CASCADE,
     actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL, action text NOT NULL,
