@@ -298,6 +298,13 @@
 .document-calculation strong{color:#14243a}
 .line-item input[type=number]{text-align:right}
 .line-item button:disabled{opacity:.35;cursor:not-allowed}
+/* Povratak iz Poslovnog pomoćnika */
+.ai-back-button{min-height:42px;border:1px solid #dce5ef;background:#fff;color:#3e5269;border-radius:9px;padding:0 13px;margin:0 0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:700;box-shadow:0 2px 7px rgba(19,48,82,.05);transition:background .16s,border-color .16s,color .16s,transform .16s}
+.ai-back-button svg{width:18px;height:18px;flex:none}
+.ai-back-button:hover{background:#eef5fd;border-color:#b8d1ee;color:#1769d2;transform:translateX(-1px)}
+.ai-back-button:focus-visible{outline:3px solid rgba(23,105,210,.2);outline-offset:2px}
+@media(max-width:600px){.ai-back-button{min-height:44px;margin-bottom:12px;padding:0 14px;font-size:13.5px}}
+
 /* AI pomoćnik — bolja čitljivost i jasnija vizuelna hijerarhija */
 .ai-page-head h1{font-size:32px;line-height:1.15}
 .ai-page-head>div>p:last-child{font-size:14px;line-height:1.55;color:#65758a}
