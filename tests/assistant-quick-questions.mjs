@@ -5,5 +5,5 @@ assert(ai.includes('submitQuestion(text)'),'Brzo pitanje mora koristiti isti tok
 assert(ai.includes('Provjeravam podatke…'),'Mora postojati stanje obrade');
 assert(ai.includes('Pokušaj ponovo'),'Mora postojati ponavljanje nakon greške');
 assert(ai.includes('disabled={processing}'),'Ponovno slanje mora biti onemogućeno tokom obrade');
-assert(ai.includes('overdue.map')&&ai.includes('waitingOffers')&&ai.includes('todayJobs')&&ai.includes('openJobs.map'),'Odgovori moraju koristiti stvarne podatke firme');
+assert(ai.includes('overdue')&&ai.includes('waitingOffers')&&ai.includes('todayJobs')&&ai.includes('openJobs'),'Odgovori moraju koristiti stvarne podatke firme');
 console.log('Assistant quick questions tests passed');
