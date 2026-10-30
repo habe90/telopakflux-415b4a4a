@@ -476,7 +476,7 @@ function AppShell(){
  const [authLoading,setAuthLoading]=useState(true);
  const [authView,setAuthView]=useState('login');
  const [inviteView,setInviteView]=useState(null);
- const [page,setPage]=useState('Početna'); const [mobile,setMobile]=useState(false); const [modal,setModal]=useState(false);
+ const [page,setPage]=useState('Početna'); const previousInternalPage=useRef(null); const [mobile,setMobile]=useState(false); const [modal,setModal]=useState(false);
  const [navPopup,setNavPopup]=useState(null); const [quickCreate,setQuickCreate]=useState(null); const [profileModal,setProfileModal]=useState(false); const [searchOpen,setSearchOpen]=useState(false); const [notifications,setNotifications]=useState([]),[notificationsLoading,setNotificationsLoading]=useState(false),[notificationsError,setNotificationsError]=useState(''); const [notice,setNotice]=useState('');
  const [profile,setProfile]=useState({name:'',email:'',phone:'',avatar:null});
  const [brand,setBrand]=useState(null);
@@ -505,7 +505,8 @@ function AppShell(){
  const authSuccess=user=>{setProfile(p=>({...p,...user}));setAuthed(true);setAuthView('login')};
  const logout=async()=>{setNavPopup(null);try{await fetch('/api/auth/logout',{method:'POST',credentials:'include'})}catch{}setAuthed(false);setProfile({name:'',email:'',phone:'',avatar:null});setAuthView('login')};
  const isOwner=profile?.isPlatformOwner||profile?.role==='Platform Owner';
- const go=p=>{setPage(p);setMobile(false)};
+ const go=p=>{setPage(current=>{if(p==='AI pomoćnik'&&current!=='AI pomoćnik')previousInternalPage.current=current;return p});setMobile(false)};
+ const leaveAssistant=()=>{const target=previousInternalPage.current&&previousInternalPage.current!=='AI pomoćnik'?previousInternalPage.current:'Početna';previousInternalPage.current=null;setPage(target);setMobile(false)};
  useEffect(()=>{if(authed&&isOwner&&!ownerNavItems.some(([n])=>n===page))setPage('Owner pregled')},[authed,isOwner]);
  const content=useMemo(()=>{
   if(isOwner){
@@ -520,7 +521,7 @@ function AppShell(){
    'Računi':<InvoicesModule/>,
    'Materijal':<StockModule/>,
    'Održavanje':<MaintenanceModule/>,
-   'AI pomoćnik':<AIAssistant/>,
+   'AI pomoćnik':<AIAssistant onBack={leaveAssistant}/>,
    'Izvještaji':<ReportsModule/>,
    'Postavke':<SettingsModule/>,
    'Korisnici':<UsersManagement/>
