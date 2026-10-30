@@ -150,15 +150,19 @@ app.get('/api/debug/smtp', async (req, res) => {
 // ---------- Sigurna autentifikacija ----------
 app.post('/api/auth/register', strictLimiter, async (req, res) => {
   try {
-    const { company, industry, workers, name, password } = req.body || {};
+    const { company, industry, workers, address, postal_code, city, siret, tva_number, company_phone, name, password } = req.body || {};
     const email = normalizeEmail(req.body?.email);
-    if (!company || !name || !email || !passwordValid(password)) return res.status(400).json({ error: 'Popunite sva polja. Lozinka mora imati najmanje 12 znakova, veliko i malo slovo, broj i specijalni znak.' });
+    const cleanSiret=String(siret||'').replace(/\s/g,'');
+    if (!company || !address || !postal_code || !city || !cleanSiret || !name || !email || !passwordValid(password)) return res.status(400).json({ error: 'Popunite sva obavezna polja. Lozinka mora imati najmanje 12 znakova, veliko i malo slovo, broj i specijalni znak.' });
+    if(!/^\d{14}$/.test(cleanSiret))return res.status(400).json({error:'SIRET mora sadržavati tačno 14 cifara.'});
     const exists = await pool.query('SELECT id FROM app_users WHERE email=$1', [email]);
     if (exists.rows[0]) return res.status(409).json({ error: 'Nalog sa ovom email adresom već postoji.' });
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const c = await client.query('INSERT INTO companies(name,industry,field_workers) VALUES($1,$2,$3) RETURNING id', [company, industry || '', Math.max(1, Number(workers) || 1)]);
+      const teamSize=Math.max(1,Number(workers)||1);
+      const c = await client.query(`INSERT INTO companies(name,industry,field_workers,address,postal_code,city,country,siret,tva_number,company_phone) VALUES($1,$2,$3,$4,$5,$6,'France',$7,$8,$9) RETURNING id`, [String(company).trim(), String(industry||'').trim(), teamSize, String(address).trim(), String(postal_code).trim(), String(city).trim(), cleanSiret, String(tva_number||'').trim(), String(company_phone||'').trim()]);
+      await client.query(`INSERT INTO company_settings(company_id,company_name,address,postal_code,city,country,siret,tva_number,tax_id,phone,email) VALUES($1,$2,$3,$4,$5,'France',$6,$7,$7,$8,$9) ON CONFLICT(company_id) DO UPDATE SET company_name=EXCLUDED.company_name,address=EXCLUDED.address,postal_code=EXCLUDED.postal_code,city=EXCLUDED.city,country=EXCLUDED.country,siret=EXCLUDED.siret,tva_number=EXCLUDED.tva_number,tax_id=EXCLUDED.tax_id,phone=EXCLUDED.phone,email=EXCLUDED.email`, [c.rows[0].id,String(company).trim(),String(address).trim(),String(postal_code).trim(),String(city).trim(),cleanSiret,String(tva_number||'').trim(),String(company_phone||'').trim(),email]);
       const passwordHash = await hashPassword(password);
       const u = await client.query(`INSERT INTO app_users(company_id,name,email,password_hash,role,status,email_verified) VALUES($1,$2,$3,$4,'Administrator','Aktivan',false) RETURNING *`, [c.rows[0].id, name, email, passwordHash]);
       const code = generateCode();
@@ -297,7 +301,7 @@ app.put('/api/auth/password', requireAuth, strictLimiter, async (req, res) => {
 });
 
 // ---------- Postavke radnog prostora ----------
-const workspaceDefaults = { company_name: '', tax_id: '', address: '', city: '', phone: '', email: '', website: '', logo_data: null, currency: 'EUR', tax_rate: 17, invoice_prefix: 'R-', offer_prefix: 'PN-', payment_days: 7, document_note: '', notify_new_job: true, notify_status_change: true, notify_payment: true, notify_low_stock: true, notify_maintenance: true, email_notifications: true, session_timeout_minutes: 10080 };
+const workspaceDefaults = { company_name: '', tax_id: '', siret:'', tva_number:'', address: '', postal_code:'', city: '', country:'France', phone: '', email: '', website: '', logo_data: null, currency: 'EUR', tax_rate: 17, invoice_prefix: 'R-', offer_prefix: 'PN-', payment_days: 7, document_note: '', notify_new_job: true, notify_status_change: true, notify_payment: true, notify_low_stock: true, notify_maintenance: true, email_notifications: true, session_timeout_minutes: 10080 };
 async function ensureWorkspaceSettings(companyId) {
   const company = await pool.query('SELECT name FROM companies WHERE id=$1', [companyId]);
   await pool.query(`INSERT INTO company_settings(company_id,company_name) VALUES($1,$2) ON CONFLICT(company_id) DO NOTHING`, [companyId, company.rows[0]?.name || '']);
@@ -307,8 +311,9 @@ app.get('/api/settings/workspace', requireAuth, async (req, res) => { try { awai
 app.put('/api/settings/company', requireAuth, async (req, res) => { try {
   await ensureWorkspaceSettings(req.user.company_id); const b = req.body || {}; const logo = b.logo_data;
   if (logo !== undefined && logo !== null && logo !== '' && (!/^data:image\/(png|jpeg|webp);base64,/.test(logo) || logo.length > 2800000)) return res.status(400).json({ error: 'Logo nije validan ili je veći od 2 MB.' });
-  const r = await pool.query(`UPDATE company_settings SET company_name=$1,tax_id=$2,address=$3,city=$4,phone=$5,email=$6,website=$7,logo_data=$8,updated_at=now() WHERE company_id=$9 RETURNING *`, [String(b.company_name || '').trim(), String(b.tax_id || '').trim(), String(b.address || '').trim(), String(b.city || '').trim(), String(b.phone || '').trim(), normalizeEmail(b.email), String(b.website || '').trim(), logo || null, req.user.company_id]);
-  if (r.rows[0].company_name) await pool.query('UPDATE companies SET name=$1 WHERE id=$2', [r.rows[0].company_name, req.user.company_id]); await workspaceAudit(req, 'company.settings.update', { fields: ['company_name', 'tax_id', 'address', 'city', 'phone', 'email', 'website', 'logo_data'] }); res.json(r.rows[0]);
+  const siret=String(b.siret||'').replace(/\s/g,'');if(siret&&!/^\d{14}$/.test(siret))return res.status(400).json({error:'SIRET mora sadržavati tačno 14 cifara.'});
+  const r = await pool.query(`UPDATE company_settings SET company_name=$1,tax_id=$2,siret=$3,tva_number=$4,address=$5,postal_code=$6,city=$7,country='France',phone=$8,email=$9,website=$10,logo_data=$11,updated_at=now() WHERE company_id=$12 RETURNING *`, [String(b.company_name || '').trim(), String(b.tva_number||b.tax_id||'').trim(),siret,String(b.tva_number||'').trim(), String(b.address || '').trim(),String(b.postal_code||'').trim(), String(b.city || '').trim(), String(b.phone || '').trim(), normalizeEmail(b.email), String(b.website || '').trim(), logo || null, req.user.company_id]);
+  if (r.rows[0].company_name) await pool.query(`UPDATE companies SET name=$1,address=$2,postal_code=$3,city=$4,country='France',siret=$5,tva_number=$6,company_phone=$7 WHERE id=$8`, [r.rows[0].company_name,r.rows[0].address,r.rows[0].postal_code,r.rows[0].city,r.rows[0].siret,r.rows[0].tva_number,r.rows[0].phone,req.user.company_id]); await workspaceAudit(req, 'company.settings.update', { fields: ['company_name','siret','tva_number','address','postal_code','city','country','phone','email','website','logo_data'] }); res.json(r.rows[0]);
 } catch (e) { console.error(e); res.status(500).json({ error: 'Podaci firme nisu sačuvani.' }); } });
 app.put('/api/settings/documents', requireAuth, async (req, res) => { try { await ensureWorkspaceSettings(req.user.company_id); const b = req.body || {}; const r = await pool.query(`UPDATE company_settings SET currency=$1,tax_rate=$2,invoice_prefix=$3,offer_prefix=$4,payment_days=$5,document_note=$6,updated_at=now() WHERE company_id=$7 RETURNING *`, [String(b.currency || 'EUR').slice(0, 5), Math.max(0, Number(b.tax_rate) || 0), String(b.invoice_prefix || 'R-').slice(0, 15), String(b.offer_prefix || 'PN-').slice(0, 15), Math.max(0, Number(b.payment_days) || 0), String(b.document_note || '').slice(0, 1000), req.user.company_id]); await workspaceAudit(req, 'document.settings.update', b); res.json(r.rows[0]); } catch (e) { console.error(e); res.status(500).json({ error: 'Postavke dokumenata nisu sačuvane.' }); } });
 app.put('/api/settings/notifications', requireAuth, async (req, res) => { try { await ensureWorkspaceSettings(req.user.company_id); const b = req.body || {}; const keys = ['notify_new_job', 'notify_status_change', 'notify_payment', 'notify_low_stock', 'notify_maintenance', 'email_notifications']; const vals = keys.map(k => b[k] !== false); const r = await pool.query(`UPDATE company_settings SET notify_new_job=$1,notify_status_change=$2,notify_payment=$3,notify_low_stock=$4,notify_maintenance=$5,email_notifications=$6,updated_at=now() WHERE company_id=$7 RETURNING *`, [...vals, req.user.company_id]); await workspaceAudit(req, 'notification.settings.update', b); res.json(r.rows[0]); } catch (e) { console.error(e); res.status(500).json({ error: 'Postavke obavijesti nisu sačuvane.' }); } });
