@@ -241,6 +241,15 @@
 .profile-unsaved{display:block;color:#b17310;font-size:9px;font-style:normal;font-weight:700;margin-top:6px}
 @keyframes pulse{50%{opacity:.35}}
 
+/* Login i registracija — čitljiv marketinški blok */
+.auth-brand-mid{text-align:left;max-width:470px}
+.auth-brand-mid h1{font-size:38px!important;line-height:1.16!important;margin:0 0 20px!important;letter-spacing:-1px;font-weight:800}
+.auth-brand-mid>p{color:#e4effb!important;font-size:16px!important;line-height:1.65!important;margin:0 0 30px!important;max-width:440px}
+.auth-brand-mid ul{list-style:none;padding:0;margin:0;display:grid!important;gap:16px!important}
+.auth-brand-mid li{display:flex!important;align-items:center;justify-content:flex-start;gap:12px!important;font-size:15px!important;line-height:1.45;font-weight:650;text-align:left}
+.auth-brand-mid li svg{width:20px!important;height:20px!important;min-width:20px;color:#c6ddfa;stroke-width:2}
+@media(max-width:1100px){.auth-brand-mid h1{font-size:33px!important}.auth-brand-mid>p{font-size:15px!important}.auth-brand-mid li{font-size:14px!important}}
+
 /* Globalne poruke za CRUD dokumenata */
 .app-toast{position:fixed;right:24px;top:78px;z-index:10000;display:flex;align-items:center;gap:11px;width:min(390px,calc(100vw - 32px));padding:14px 15px;border-radius:12px;box-shadow:0 14px 42px rgba(19,35,55,.2);font-size:13px;font-weight:700;animation:toast-in .22s ease-out}
 .app-toast.success{background:#ecfbf3;border:1px solid #aee3c7;color:#176b45}
