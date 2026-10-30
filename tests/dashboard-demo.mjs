@@ -9,4 +9,15 @@ assert(app.includes('alerts:[')&&app.includes('latest_invoices:['),'Upozorenja i
 assert(app.includes('Array.from({length:days}'),'Grafikon mora generisati 7 ili 30 dana');
 assert(app.includes('demo-data-badge')&&app.includes('Demo podaci'),'Zaglavlje mora označiti demo podatke');
 assert(app.includes("!DASHBOARD_DEMO_MODE&&go"),'Demo zapisi ne smiju otvarati stvarne zapise');
+const dashFnStart=app.indexOf('function Dashboard({openNew,go,profile})');
+const gridStart=app.indexOf('className="dashboard-grid"',dashFnStart);
+const colStart=app.indexOf('dashboard-col',gridStart);
+const scheduleIdx=app.indexOf('schedule-card',gridStart);
+const invoicesIdx=app.indexOf('className="card invoices"',gridStart);
+const activityIdx=app.indexOf('activity-card',gridStart);
+const tasksIdx=app.indexOf('tasks-card',gridStart);
+assert(colStart>-1 && colStart<scheduleIdx && scheduleIdx<invoicesIdx && invoicesIdx<activityIdx,'Raspored i računi moraju biti u lijevoj koloni, prije grafikona');
+assert(activityIdx<tasksIdx,'Grafikon i upozorenja moraju biti zajedno u desnoj koloni');
+console.log('Dashboard layout order verified');
+
 console.log('Dashboard demo tests passed');
