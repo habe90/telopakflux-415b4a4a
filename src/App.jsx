@@ -13,6 +13,7 @@ import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule
 import AIAssistant from './AIAssistant';
 import { OwnerOverview, OwnerCompanies, OwnerUsers, OwnerAudit, OwnerSettings } from './PlatformOwner';
 import { DataProvider, useData } from './store';
+import { parseAppLocation, navigateApp, pageUrl, replaceQuery, requestedInternalUrl } from './router';
 
 const navItems = [
   ['Početna', LayoutDashboard], ['Klijenti', Users], ['Poslovi', BriefcaseBusiness],
@@ -193,13 +194,14 @@ function UserActionModal({user,mode,close,onSave,onToggle,onDelete,onResend,onNo
  </div></div>
 }
 
-function UsersManagement(){
+function UsersManagement({openIntent,onIntentHandled}){
  const [users,setUsers]=useState([]); const [openModal,setOpenModal]=useState(false); const [action,setAction]=useState(null); const [notice,setNotice]=useState(''); const [error,setError]=useState(''); const [loading,setLoading]=useState(true);
  const [search,setSearch]=useState(''); const [roleFilter,setRoleFilter]=useState('Sve uloge');
  const teamApi=async(path='',options={})=>{const r=await fetch(`/api/team${path}`,{credentials:'include',headers:options.body?{'Content-Type':'application/json'}:undefined,...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Zahtjev nije uspio.');return d};
  const decorate=u=>({...u,joined:new Date(u.created_at).toLocaleDateString('bs-BA'),initials:initials(u.name),color:'#dbeafe'});
  const load=()=>{setLoading(true);teamApi().then(d=>{setUsers((Array.isArray(d)?d:[]).map(decorate));setError('')}).catch(e=>setError(e.message)).finally(()=>setLoading(false))};
  useEffect(()=>{load()},[]);
+ useEffect(()=>{if(!openIntent)return;const found=users.find(x=>String(x.id)===String(openIntent.id));if(found)setAction({user:found,mode:'detail'});onIntentHandled?.()},[openIntent?.nonce,users]);
  const filteredUsers=users.filter(u=>`${u.name} ${u.email} ${u.phone}`.toLowerCase().includes(search.toLowerCase()) && (roleFilter==='Sve uloge'||u.role===roleFilter));
  const notify=message=>{setNotice(message);window.setTimeout(()=>setNotice(''),4000)};
  const toggleStatus=async id=>{const user=users.find(x=>x.id===id);const saved=await teamApi(`/${id}`,{method:'PUT',body:JSON.stringify({status:user.status==='Aktivan'?'Neaktivan':'Aktivan'})});setUsers(a=>a.map(x=>x.id===id?decorate(saved):x))};
@@ -472,11 +474,13 @@ function ProfileModal({close,onSaved,profile,setProfile}){
 
 function AppShell(){
  const {clients,addClient,addJob,addOffer,addInvoice,addStock,loading,backendOnline}=useData();
+ const initialRoute=useRef(parseAppLocation());
  const [authed,setAuthed]=useState(false);
  const [authLoading,setAuthLoading]=useState(true);
  const [authView,setAuthView]=useState('login');
+ const requestedUrl=useRef(requestedInternalUrl());
  const [inviteView,setInviteView]=useState(null);
- const [page,setPage]=useState('Početna'); const previousInternalPage=useRef(null); const [recordIntent,setRecordIntent]=useState(null); const [mobile,setMobile]=useState(false); const [modal,setModal]=useState(false);
+ const [page,setPage]=useState(initialRoute.current.page); const previousInternalPage=useRef(null); const [recordIntent,setRecordIntent]=useState(initialRoute.current.id?{id:initialRoute.current.id,filter:initialRoute.current.params.get('filter'),nonce:Date.now()}:null); const [mobile,setMobile]=useState(false); const [modal,setModal]=useState(false);
  const [navPopup,setNavPopup]=useState(null); const [quickCreate,setQuickCreate]=useState(null); const [profileModal,setProfileModal]=useState(false); const [searchOpen,setSearchOpen]=useState(false); const [notifications,setNotifications]=useState([]),[notificationsLoading,setNotificationsLoading]=useState(false),[notificationsError,setNotificationsError]=useState(''); const [notice,setNotice]=useState('');
  const [profile,setProfile]=useState({name:'',email:'',phone:'',avatar:null});
  const [brand,setBrand]=useState(null);
@@ -500,32 +504,33 @@ function AppShell(){
   else if(type==='term')addJob(data);
   else if(type==='material')addStock(data);
   notify(`${label} je uspješno kreiran.`);
-  setPage(target);
+  go(target);
  };
- const authSuccess=user=>{setProfile(p=>({...p,...user}));setAuthed(true);setAuthView('login')};
+ const authSuccess=user=>{setProfile(p=>({...p,...user}));setAuthed(true);setAuthView('login');const route=parseAppLocation(new URL(requestedUrl.current,window.location.origin));setPage(route.page);setRecordIntent(route.id?{id:route.id,filter:route.params.get('filter'),nonce:Date.now()}:null)};
  const logout=async()=>{setNavPopup(null);try{await fetch('/api/auth/logout',{method:'POST',credentials:'include'})}catch{}setAuthed(false);setProfile({name:'',email:'',phone:'',avatar:null});setAuthView('login')};
  const isOwner=profile?.isPlatformOwner||profile?.role==='Platform Owner';
- const go=p=>{setPage(current=>{if(p==='AI pomoćnik'&&current!=='AI pomoćnik')previousInternalPage.current=current;return p});setMobile(false)};
- const leaveAssistant=()=>{const target=previousInternalPage.current&&previousInternalPage.current!=='AI pomoćnik'?previousInternalPage.current:'Početna';previousInternalPage.current=null;setPage(target);setMobile(false)};
- const openAssistantRecord=(target,id,filter)=>{setRecordIntent({id:id==null?null:String(id),filter,nonce:Date.now()});setPage(target);setMobile(false)};
- useEffect(()=>{if(authed&&isOwner&&!ownerNavItems.some(([n])=>n===page))setPage('Owner pregled')},[authed,isOwner]);
+ const go=(p,options={})=>{setPage(current=>{if(p==='AI pomoćnik'&&current!=='AI pomoćnik')previousInternalPage.current=current;return p});setRecordIntent(options.id?{id:String(options.id),filter:options.filter,nonce:Date.now()}:null);navigateApp(p,{id:options.id,params:options.params});setMobile(false)};
+ const leaveAssistant=()=>{if(window.history.length>1){window.history.back();return}previousInternalPage.current=null;go('Početna',{replace:true})};
+ const openAssistantRecord=(target,id,filter)=>{setRecordIntent({id:id==null?null:String(id),filter,nonce:Date.now()});navigateApp(target,{id,params:filter?{filter}:null});setPage(target);setMobile(false)};
+ useEffect(()=>{const sync=()=>{const route=parseAppLocation();setPage(route.page);setRecordIntent(route.id?{id:route.id,filter:route.params.get('filter'),nonce:Date.now()}:route.params.get('filter')?{id:null,filter:route.params.get('filter'),nonce:Date.now()}:null)};window.addEventListener('popstate',sync);return()=>window.removeEventListener('popstate',sync)},[]);
+ useEffect(()=>{if(authed&&isOwner&&!ownerNavItems.some(([n])=>n===page)){setPage('Owner pregled');navigateApp('Owner pregled',{replace:true})}if(authed&&!isOwner&&page.startsWith('Owner')){setPage('Početna');navigateApp('Početna',{replace:true})}},[authed,isOwner]);
  const content=useMemo(()=>{
   if(isOwner){
    const ownerScreens={'Owner pregled':<OwnerOverview go={go}/>,'Firme':<OwnerCompanies/>,'Svi korisnici':<OwnerUsers/>,'Pretplate':<OwnerCompanies/>,'Sistem':<OwnerOverview go={go}/>,'Audit zapis':<OwnerAudit/>,'Postavke aplikacije':<OwnerSettings onBrandChange={applyBrand}/>};
    return ownerScreens[page]||ownerScreens['Owner pregled'];
   }
   const screens={
-   'Klijenti':<ClientsModule/>,
+   'Klijenti':<ClientsModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Poslovi':<JobsModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Raspored':<ScheduleModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Ponude':<OffersModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Računi':<InvoicesModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
-   'Materijal':<StockModule/>,
-   'Održavanje':<MaintenanceModule/>,
+   'Materijal':<StockModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
+   'Održavanje':<MaintenanceModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'AI pomoćnik':<AIAssistant onBack={leaveAssistant} onOpenRecord={openAssistantRecord}/>,
    'Izvještaji':<ReportsModule/>,
    'Postavke':<SettingsModule/>,
-   'Korisnici':<UsersManagement/>
+   'Korisnici':<UsersManagement openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>
   };
   return page==='Početna'?<Dashboard openNew={()=>setModal(true)} go={go} notify={notify} profile={profile}/>:screens[page];
  },[page,isOwner,profile]);
