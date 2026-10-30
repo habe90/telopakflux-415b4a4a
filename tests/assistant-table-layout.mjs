@@ -1,0 +1,10 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const ai=fs.readFileSync('src/AIAssistant.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(ai.includes('<table className="ai-result-table">')&&ai.includes('<thead>')&&ai.includes('<tbody>'),'Rezultati moraju koristiti jednu HTML tabelu');
+assert(ai.includes("o.status==='Poslata'"),'Ponude koje čekaju odgovor smiju uključiti samo poslane ponude');
+assert(!ai.includes("['Poslata','Nacrt'].includes(o.status)"),'Nacrti ne smiju biti u ponudama koje čekaju odgovor');
+assert(ai.includes("item.sent_at?new Date(item.sent_at)")&&ai.includes(":'—'"),'Datum slanja mora koristiti sent_at ili crticu');
+assert(ai.includes("'Odgovor pomoćnika'"),'Kartica mora imati ispravan naslov');
+assert(css.includes('width:40px!important')&&css.includes('justify-content:center!important'),'Robot mora biti centriran u kvadratu 40px');
+assert(css.includes('.ai-result-table.type-offers th:nth-child(3)'),'Iznos ponude mora biti poravnat desno');
+console.log('Assistant table layout tests passed');
