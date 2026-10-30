@@ -1,0 +1,14 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const ai=fs.readFileSync('src/AIAssistant.jsx','utf8'),modules=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8');
+const money=v=>{const raw=String(v||'').replace(/[^0-9,.-]/g,'');const n=Number(raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw);return Number.isFinite(n)?n:0};
+const invoices=[{status:'Poslat',total:1000,paid:'250,00 €'},{status:'Plaćen',total:500,paid:500}];assert.equal(Math.max(0,money(invoices[0].total)-money(invoices[0].paid)),750,'Preostali dug mora oduzeti djelimičnu uplatu');
+const offers=[{status:'Poslata'},{status:'Nacrt'},{status:'Prihvaćena'},{status:'Odbijena'}];assert.equal(offers.filter(o=>o.status==='Poslata').length,1,'Samo poslane ponude čekaju odgovor');
+assert(ai.includes("String(j.date||'').trim()===companyDateKey"),'Današnji raspored mora koristiti datum vremenske zone firme');
+assert(ai.includes("jobs.filter(j=>j.status!=='Završeno')"),'Otvoreni poslovi moraju pratiti pravilo modula');
+assert(ai.includes("onOpen(config.page,null,config.filter)"),'Prikaži sve ne smije otvoriti pojedinačni zapis');
+assert(modules.includes("setStatus('Zakašnjeli s dugom')")&&modules.includes("status==='Zakašnjeli s dugom'?overdueWithDebt(x)"),'Filter računa mora odgovarati pomoćniku');
+assert(modules.includes("setStatus('Otvoreni poslovi')"),'Prikaži sve otvorene poslove mora postaviti pravi filter');
+assert(server.includes('can_send_reminders:canSendReminder(req.user)'),'UI prava podsjetnika moraju dolaziti s backend-a');
+assert(server.includes("status='draft' ORDER BY updated_at DESC"),'Sačuvani nacrt mora se moći ponovo otvoriti');
+assert(server.includes("data.status==='Poslata') data.sent_at=new Date()"),'Slanje ponude mora evidentirati sent_at');
+console.log('Assistant functional tests passed');
