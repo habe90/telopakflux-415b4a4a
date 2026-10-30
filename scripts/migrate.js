@@ -168,6 +168,7 @@ async function run() {
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS tva_number text DEFAULT ''`);
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS postal_code text DEFAULT ''`);
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'France'`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS timezone text NOT NULL DEFAULT 'Europe/Paris'`);
   await pool.query(`CREATE TABLE IF NOT EXISTS company_audit_log (
     id bigserial PRIMARY KEY, company_id int REFERENCES companies(id) ON DELETE CASCADE,
     actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL, action text NOT NULL,
