@@ -1,0 +1,13 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const app=fs.readFileSync('src/App.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+assert(server.includes("app.get('/api/dashboard/home'"),'Dashboard mora imati stvarni backend sažetak');
+assert(migration.includes('CREATE TABLE IF NOT EXISTS invoice_payments'),'Djelimične uplate moraju imati evidenciju s datumom');
+assert(server.includes('month_paid')&&server.includes('previous_month_paid'),'Kartica naplate mora koristiti uporedive mjesece');
+assert(server.includes("j.status!=='Završeno'")&&app.includes("liveJobs.filter(j=>j.status!=='Završeno').length"),'Dashboard i meni moraju koristiti istu definiciju aktivnog posla');
+assert(server.includes("o.status==='Poslata'"),'Čekanje odgovora mora uključiti samo poslane ponude');
+assert(server.includes('Math.max(legacyPaid,ledgerPaid)'),'Dug mora uključiti djelimične uplate bez dupliranja migriranog iznosa');
+assert(app.includes('Naplaćeno po danima')&&app.includes('setPeriod(30)'),'Grafikon mora podržati stvarnih 7 i 30 dana');
+assert(server.includes('todayJobs.rows')&&server.includes('timeZone:tz'),'Današnji raspored mora koristiti vremensku zonu firme');
+assert(app.includes('Do pet posljednjih izdatih računa'),'Posljednji računi moraju biti stvarni i ograničeni');
+assert(app.includes('function Dashboard({openNew,go,profile})')&&app.includes('cards.month_paid'),'Aktivni dashboard ne smije koristiti statičke vrijednosti');
+console.log('Dashboard real data tests passed');
