@@ -11,5 +11,10 @@ assert(ui.includes('Pronađeno klijenata:')&&ui.includes('Očisti filtere'),'Akt
 assert(ui.includes('text onView=')&&ui.includes('Arhiviraj'),'Akcije moraju imati tekst i arhiviranje');
 assert(server.includes("app.get('/api/clients/summary'")&&server.includes('invoice_payments'),'Sažetak mora koristiti stvarne uplate');
 assert(server.includes("app.patch('/api/clients/:id/archive'"),'Arhiviranje mora biti trajno');
+assert(ui.includes("'Arhivirani'")&&ui.includes("status==='Arhivirani'?!!x.archived"),'Mora postojati filter koji prikazuje samo arhivirane klijente');
+assert(ui.includes(':!x.archived&&(status===\'Svi statusi\'')||ui.includes('!x.archived&&(status'),'Arhivirani klijenti ne smiju biti u zadanom prikazu');
+assert(ui.includes('archived-hint')&&ui.includes('Prikaži arhivirane'),'Mora postojati napomena i prečica ka arhiviranim klijentima');
+assert(ui.includes('unarchive(x)')&&ui.includes('Vrati iz arhive'),'Arhivirani klijent mora moći biti vraćen');
+assert(ui.includes("x.archived?'Arhiviran':x.status"),'Arhivirani klijent mora imati zasebnu oznaku statusa');
 assert(migration.includes('postal_code text')&&migration.includes('archived boolean'),'Baza mora čuvati lokaciju i arhivu');
 console.log('Clients list tests passed');
