@@ -1,5 +1,5 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';
-const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8'),css=fs.readFileSync('src/styles.css','utf8');
 assert(ui.includes('<th>Kontakt</th>')&&!ui.includes('<th>Kontakt osoba</th>'),'Kolona mora biti Kontakt');
 assert(ui.includes('clientContactLines')&&ui.includes('isCompanyClient'),'Fizička i pravna lica moraju imati različit kontaktni prikaz');
 assert(ui.includes('Dodano ovog mjeseca: ${addedThisMonth}'),'Broj novih klijenata mora biti dinamičan');
@@ -32,4 +32,13 @@ assert.equal(neither.phone,'');assert.equal(neither.email,'');
 assert(ui.includes('contact.person&&<strong>{contact.person}</strong>')&&ui.includes('contact.phone&&<small className="table-sub contact-line">{contact.phone}</small>')&&ui.includes('contact.email&&<small className="table-sub contact-line">{contact.email}</small>'),'Kontakt mora prikazati telefon i e-mail u zasebnim redovima, bez duplikata');
 assert(!ui.includes("contact[1]||(!isCompanyClient(x)?[x.phone,x.email].filter(Boolean).join(' · '):'')"),'Stari kod koji je uzrokovao dupliranje mora biti uklonjen');
 assert(ui.includes('!contact.person&&!contact.phone&&!contact.email&&<small className="table-sub">—</small>'),'Ako nedostaju svi podaci, mora se prikazati —');
+// Provjera jedinstvenog formata iznosa i centriranja kolone "Ukupno naplaćeno"
+const cardMoneyCall=ui.match(/label="Naplaćeno ovog mjeseca"[\s\S]{0,40}value=\{money\(monthPaid\)\}/);
+const columnMoneyCall=ui.match(/className="money-col"><strong>\{money\(stats\.value\)\}<\/strong>/);
+assert(cardMoneyCall,'Kartica "Naplaćeno ovog mjeseca" mora koristiti money()');
+assert(columnMoneyCall,'Kolona "Ukupno naplaćeno" mora koristiti istu funkciju money()');
+function money(value){return new Intl.NumberFormat('bs-BA',{style:'currency',currency:'EUR'}).format(Number(value)||0)}
+assert(/^0,00[\s\u00A0]€$/.test(money(0)),`Format nule mora biti 0,00 €, dobijeno: ${money(0)}`);
+assert(/^1\.250,50[\s\u00A0]€$/.test(money(1250.5)),`Format 1250.5 mora biti 1.250,50 €, dobijeno: ${money(1250.5)}`);
+assert(css.includes('.clients-table .money-col{text-align:center'),'Kolona "Ukupno naplaćeno" mora biti centrirana (naslov i vrijednosti)');
 console.log('Clients list tests passed');
