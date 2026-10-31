@@ -366,6 +366,8 @@
 @media(max-width:700px){.ai-row-actions{display:grid;grid-template-columns:1fr}.ai-row-actions button{width:100%}.reminder-modal{width:calc(100vw - 18px);max-height:calc(100dvh - 18px)}.reminder-modal-body{padding:16px}.reminder-warning{grid-template-columns:auto 1fr}.reminder-warning button{grid-column:1/-1;justify-content:center}.reminder-actions{display:grid!important;grid-template-columns:1fr}.reminder-actions button{width:100%;justify-content:center}.reminder-modal-body textarea{min-height:190px}}
 
 /* Lista klijenata */
+.contact-cell{display:flex;flex-direction:column;gap:2px}.contact-cell strong{font-size:12px}.contact-cell .contact-line{display:block;margin-top:0}
+
 .archived-hint{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 18px 12px;padding:9px 11px;border:1px solid #e4dbf4;background:#f8f5fd;border-radius:9px;color:#6a5aa0;font-size:11px}.archived-hint svg{width:15px;height:15px;flex:none}.archived-hint button{margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1px solid #d9cdf0;background:#fff;color:#6a5aa0;border-radius:7px;padding:6px 10px;font-size:10.5px;font-weight:750}
 @media(max-width:700px){.archived-hint{margin:0 12px 10px}.archived-hint button{margin-left:0;width:100%;justify-content:center}}
 
