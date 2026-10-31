@@ -10,10 +10,11 @@ assert(demo.includes('alerts:[')&&demo.includes('latest_invoices:invoiceRows'),'
 assert(demo.includes('Array.from({length:days}'),'Grafikon mora generisati 7 ili 30 dana');
 assert(app.includes('demo-data-badge')&&app.includes('Demo podaci'),'Zaglavlje mora označiti demo podatke');
 assert(app.includes("!DASHBOARD_DEMO_MODE&&go"),'Demo zapisi ne smiju otvarati stvarne zapise');
-assert(app.includes("const companyTZ='Europe/Paris'")&&app.includes("Sat:'sub.'")&&app.includes('dateLabel=`${companyParts.day}. ${dayShort}`'),'Datum zaglavlja mora koristiti francusko vrijeme i bosansku skraćenicu dana');
+assert(app.includes("const companyTZ='Europe/Paris'")&&app.includes("10:'okt.'")&&app.includes('dateLabel=`${Number(companyParts.day)}. ${monthShort}`'),'Datum zaglavlja mora koristiti francusko vrijeme i bosansku skraćenicu mjeseca');
 assert(app.includes('setInterval(()=>setDateTick(Date.now()),60000)'),'Datum se mora automatski osvježavati nakon promjene dana');
-assert(app.includes('formatDashboardDate(r.issued)'),'Datum računa mora se formatirati samo pri prikazu');
-assert(app.includes('dashboard-schedule-row')&&css.includes('grid-template-columns:64px'),'Raspored mora koristiti jedinstvene fiksne kolone');
+assert(app.includes('formatDashboardDate(r.issued)')&&app.includes("return`${iso[3]}.${iso[2]}.${iso[1]}`"),'Datum računa mora se formatirati samo pri prikazu, bez završne tačke');
+assert(app.includes('dashboard-schedule-head')&&app.includes('dashboard-schedule-row')&&css.includes('--schedule-cols:64px'),'Zaglavlje i redovi rasporeda moraju koristiti iste kolone');
+assert(demo.includes("city:'Boulogne-Billancourt'"),'Demo mora provjeriti dugu lokaciju');
 assert(app.includes('chart-y-axis')&&app.includes('data-tooltip'),'Grafikon mora imati EUR skalu i tooltip');
 assert(css.includes('overflow:visible!important'),'Grafikon ne smije imati unutrašnji vertikalni scroll');
 assert(demo.includes('R-${year}-1045')&&demo.includes('P-${year}-0217'),'Brojevi dokumenata moraju pratiti tekuću godinu');
