@@ -17,4 +17,19 @@ assert(ui.includes('archived-hint')&&ui.includes('Prikaži arhivirane'),'Mora po
 assert(ui.includes('unarchive(x)')&&ui.includes('Vrati iz arhive'),'Arhivirani klijent mora moći biti vraćen');
 assert(ui.includes("x.archived?'Arhiviran':x.status"),'Arhivirani klijent mora imati zasebnu oznaku statusa');
 assert(migration.includes('postal_code text')&&migration.includes('archived boolean'),'Baza mora čuvati lokaciju i arhivu');
+
+// Provjera ispravke dupliranja u koloni "Kontakt"
+function clientContactLines(x){return {person:x.type==='Pravno lice'?String(x.contact||'').trim():'',phone:String(x.phone||'').trim(),email:String(x.email||'').trim()}}
+const physicalBoth=clientContactLines({type:'Fizičko lice',contact:'Marko Marković',phone:'061111222',email:'marko@test.ba'});
+assert.equal(physicalBoth.person,'','Fizičko lice ne smije duplirati ime u koloni Kontakt');
+assert.equal(physicalBoth.phone,'061111222');assert.equal(physicalBoth.email,'marko@test.ba');
+const companyBoth=clientContactLines({type:'Pravno lice',contact:'Ana Anić',phone:'062333444',email:'ana@firma.ba'});
+assert.equal(companyBoth.person,'Ana Anić');assert.equal(companyBoth.phone,'062333444');assert.equal(companyBoth.email,'ana@firma.ba');
+const onlyPhone=clientContactLines({type:'Fizičko lice',phone:'063555666',email:''});
+assert.equal(onlyPhone.phone,'063555666');assert.equal(onlyPhone.email,'');
+const neither=clientContactLines({type:'Fizičko lice',phone:'',email:''});
+assert.equal(neither.phone,'');assert.equal(neither.email,'');
+assert(ui.includes('contact.person&&<strong>{contact.person}</strong>')&&ui.includes('contact.phone&&<small className="table-sub contact-line">{contact.phone}</small>')&&ui.includes('contact.email&&<small className="table-sub contact-line">{contact.email}</small>'),'Kontakt mora prikazati telefon i e-mail u zasebnim redovima, bez duplikata');
+assert(!ui.includes("contact[1]||(!isCompanyClient(x)?[x.phone,x.email].filter(Boolean).join(' · '):'')"),'Stari kod koji je uzrokovao dupliranje mora biti uklonjen');
+assert(ui.includes('!contact.person&&!contact.phone&&!contact.email&&<small className="table-sub">—</small>'),'Ako nedostaju svi podaci, mora se prikazati —');
 console.log('Clients list tests passed');
