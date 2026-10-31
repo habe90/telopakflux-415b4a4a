@@ -41,4 +41,12 @@ function money(value){return new Intl.NumberFormat('bs-BA',{style:'currency',cur
 assert(/^0,00[\s\u00A0]€$/.test(money(0)),`Format nule mora biti 0,00 €, dobijeno: ${money(0)}`);
 assert(/^1\.250,50[\s\u00A0]€$/.test(money(1250.5)),`Format 1250.5 mora biti 1.250,50 €, dobijeno: ${money(1250.5)}`);
 assert(css.includes('.clients-table .money-col{text-align:center'),'Kolona "Ukupno naplaćeno" mora biti centrirana (naslov i vrijednosti)');
+// Centriranje kolona "Poslovi" i "Faza saradnje"
+assert(ui.includes('<th className="jobs-col">Poslovi</th>'),'Naslov kolone Poslovi mora biti centriran');
+assert(ui.includes('<td className="jobs-col">{stats.jobs}</td>'),'Broj poslova u redu mora biti centriran, uključujući 0');
+assert(ui.includes('<th className="phase-col">Faza saradnje</th>'),'Naslov kolone Faza saradnje mora biti centriran');
+assert(ui.includes('<td className="phase-col"><Badge>'),'Oznaka faze saradnje mora biti u centriranoj ćeliji');
+assert(css.includes('.clients-table .jobs-col{text-align:center}'),'CSS mora centrirati kolonu Poslovi (naslov i vrijednosti)');
+assert(css.includes('.clients-table th.phase-col,.clients-table td.phase-col{text-align:center}'),'CSS mora centrirati kolonu Faza saradnje (naslov i vrijednosti)');
+assert(css.includes('.clients-table td.phase-col>.module-badge{display:inline-flex;justify-content:center'),'Oznaka faze saradnje mora biti centrirana kao cjelina unutar ćelije');
 console.log('Clients list tests passed');
