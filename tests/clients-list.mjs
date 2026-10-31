@@ -49,4 +49,9 @@ assert(ui.includes('<td className="phase-col"><Badge>'),'Oznaka faze saradnje mo
 assert(css.includes('.clients-table .jobs-col{text-align:center}'),'CSS mora centrirati kolonu Poslovi (naslov i vrijednosti)');
 assert(css.includes('.clients-table th.phase-col,.clients-table td.phase-col{text-align:center}'),'CSS mora centrirati kolonu Faza saradnje (naslov i vrijednosti)');
 assert(css.includes('.clients-table td.phase-col>.module-badge{display:inline-flex;justify-content:center'),'Oznaka faze saradnje mora biti centrirana kao cjelina unutar ćelije');
+// Centriranje naslova i grupe dugmadi u koloni "Akcije"
+assert(ui.includes('<th className="actions-col">Akcije</th>'),'Naslov Akcije mora biti centriran i pomjeren udesno');
+assert(ui.includes('<td className="actions-col"><Actions text'),'Ćelija akcija mora koristiti centriranu klasu');
+assert(css.includes('.clients-table th.actions-col,.clients-table td.actions-col{text-align:center}'),'CSS mora centrirati naslov i vrijednosti kolone Akcije');
+assert(css.includes('.clients-table td.actions-col .row-actions{display:flex;justify-content:center;width:100%}'),'Grupa dugmadi mora biti centrirana flex omotačem pune širine ćelije');
 console.log('Clients list tests passed');
