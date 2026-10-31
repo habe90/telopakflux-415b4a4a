@@ -1,0 +1,15 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+assert(ui.includes('<th>Kontakt</th>')&&!ui.includes('<th>Kontakt osoba</th>'),'Kolona mora biti Kontakt');
+assert(ui.includes('clientContactLines')&&ui.includes('isCompanyClient'),'Fizička i pravna lica moraju imati različit kontaktni prikaz');
+assert(ui.includes('Dodano ovog mjeseca: ${addedThisMonth}'),'Broj novih klijenata mora biti dinamičan');
+assert(ui.includes('Naplaćeno ovog mjeseca')&&ui.includes('Ukupno naplaćeno'),'Novčane oznake moraju odgovarati značenju');
+assert(ui.includes('[x.postal_code,x.city]'),'Lokacija mora prikazati poštanski broj i grad');
+assert(ui.includes('Faza saradnje'),'Status klijenta mora biti nazvan fazom saradnje');
+for(const field of ['x.name','x.contact','x.phone','x.email','x.city'])assert(ui.includes(field),`Pretraga mora uključiti ${field}`);
+assert(ui.includes('Pronađeno klijenata:')&&ui.includes('Očisti filtere'),'Aktivni filter mora prikazati broj i čišćenje');
+assert(ui.includes('text onView=')&&ui.includes('Arhiviraj'),'Akcije moraju imati tekst i arhiviranje');
+assert(server.includes("app.get('/api/clients/summary'")&&server.includes('invoice_payments'),'Sažetak mora koristiti stvarne uplate');
+assert(server.includes("app.patch('/api/clients/:id/archive'"),'Arhiviranje mora biti trajno');
+assert(migration.includes('postal_code text')&&migration.includes('archived boolean'),'Baza mora čuvati lokaciju i arhivu');
+console.log('Clients list tests passed');
