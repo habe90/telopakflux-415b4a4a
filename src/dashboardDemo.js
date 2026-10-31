@@ -21,7 +21,7 @@ export function buildDemoDashboard(days=7){
   chart,chart_total:chart.reduce((s,x)=>s+x.amount,0),
   today_jobs:[
    {id:'demo-job-1',time:'08:00',client:'Atelier Moreau',service:'Servis industrijskih vrata',worker:'Amir Hadžić',city:'Lyon',status:'Zakazano',priority:'Standardno'},
-   {id:'demo-job-2',time:'10:30',client:'Boulangerie Martin',service:'Hitna intervencija rashladnog sistema',worker:'Kerim Delić',city:'Villeurbanne',status:'Zakazano',priority:'Hitno'},
+   {id:'demo-job-2',time:'10:30',client:'Boulangerie Martin',service:'Hitna intervencija rashladnog sistema',worker:'Kerim Delić',city:'Boulogne-Billancourt',status:'Zakazano',priority:'Hitno'},
    {id:'demo-job-3',time:'13:15',client:'Hôtel du Parc',service:'Preventivno održavanje',worker:'Adnan Kovač',city:'Lyon',status:'U toku',priority:'Standardno'},
    {id:'demo-job-4',time:'16:00',client:'Pharmacie Centrale',service:'Pregled elektroinstalacija',worker:'Emir Selimović',city:'Bron',status:'Zakazano',priority:'Standardno'}
   ],
