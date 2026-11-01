@@ -21,4 +21,11 @@ assert(location.includes('manual-department-fields')&&location.includes('Šifra 
 assert(auth.includes('&&!f.location_search_unavailable)errs.city='),'Registracija ne smije blokirati nastavak kad pretraga nije dostupna');
 assert(settings.includes('&&!form.location_search_unavailable){setFieldError(\'city\')'),'Postavke firme ne smiju blokirati čuvanje kad pretraga nije dostupna');
 
+// 3) Otkriveni mogući uzrok "Failed to fetch" na Live sajtu: express-rate-limit baca grešku ako broj
+// proxy-skokova ne odgovara 'trust proxy' podešavanju iza nginx vhost-a koji OctaDeploy postavlja.
+assert(server.includes("validate: false"),'Rate limiteri moraju imati isključenu strogu provjeru proxy zaglavlja (čest uzrok pada zahtjeva iza reverse proxy-ja)');
+// Odlazni pozivi ka vanjskim servisima moraju imati timeout da ne "zavisnu" do prekida konekcije
+assert(server.includes('AbortSignal.timeout(ms)')&&server.includes('externalFetch('),'Vanjski API pozivi moraju imati vremensko ograničenje');
+assert(server.includes("externalFetch('https://geo.api.gouv.fr/departements")&&server.includes("externalFetch(`https://geo.api.gouv.fr/communes")&&server.includes('externalFetch(`https://api.zippopotam.us/'),'Svi vanjski pozivi moraju koristiti timeout wrapper');
+
 console.log('Registration search availability tests passed');
