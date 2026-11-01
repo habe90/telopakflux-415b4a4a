@@ -4,7 +4,7 @@ assert(app.includes('className="users-access-table"'),'Tabela korisnika mora ima
 assert(app.includes('<th className="users-role-col">Uloga</th>')&&app.includes('<td className="users-role-col">'),'Uloga mora imati klasu na naslovu i ćeliji');
 assert(app.includes('<th className="users-status-col">Status</th>')&&app.includes('<td className="users-status-col">'),'Status mora imati klasu na naslovu i ćeliji');
 assert(app.includes('<th className="users-actions-col">Akcije</th>')&&app.includes('<td className="users-actions-col">'),'Akcije moraju imati klasu na naslovu i ćeliji');
-assert(app.includes("new Intl.DateTimeFormat('bs-BA',{day:'2-digit',month:'2-digit',year:'numeric'})")&&app.includes("replace(/\\.$/,'')"),'Pridružen mora biti DD.MM.YYYY bez završne tačke');
+assert(app.includes("function formatJoinedDate")&&app.includes("return`${iso[3]}.${iso[2]}.${iso[1]}`"),'Pridružen mora biti DD.MM.YYYY, presloženo iz izvornog YYYY-MM-DD teksta');
 assert(css.includes('.users-access-table th.users-role-col')&&css.includes('text-align:center'),'Naslovi i sadržaj Uloga/Status/Akcije moraju biti centrirani');
 assert(css.includes('justify-content:center;flex-wrap:nowrap;gap:8px;width:100%;white-space:nowrap'),'Akcije moraju biti u jednom centriranom redu s jednakim razmakom');
 console.log('Users access table tests passed');
