@@ -1,0 +1,13 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(ui.includes('Zakazano za danas: ${todayScheduled}'),'Aktivni poslovi moraju prikazati današnje zakazane');
+assert(ui.includes('label="Poslovi u toku"')&&ui.includes('value={inProgress}'),'Kartica mora brojati poslove u toku');
+assert(ui.includes('label="Završeni poslovi ovog mjeseca"')&&ui.includes("x.completed_at||x.date"),'Završeni moraju koristiti datum završetka');
+assert(!ui.includes('sub="Radnici na terenu"')&&!ui.includes('sub="Prema stvarnim poslovima"'),'Nejasni podnaslovi moraju biti uklonjeni');
+for(const text of ['Još nemate evidentiranih poslova','Dodaj prvi posao','Nema poslova koji odgovaraju pretrazi','Očisti pretragu i filtere','Poslove nije moguće učitati','Pokušaj ponovo'])assert(ui.includes(text),`Nedostaje stanje: ${text}`);
+assert(ui.includes('<th>Broj posla</th>'),'Naslov mora biti Broj posla');
+assert(ui.includes("replace(/\\.$/,'')} · {x.time||'—'}"),'Termin mora biti datum · vrijeme');
+assert(css.includes('.jobs-table .job-priority-col,.jobs-table .job-status-col,.jobs-table .job-actions-col{text-align:center}'),'Prioritet, status i akcije moraju biti centrirani');
+assert(ui.includes('const jobsDemoRecords=')&&ui.includes("priority:'Hitno',status:'Zakazano'")&&ui.includes("status:'U toku'")&&ui.includes("status:'Završeno'"),'Demo mora imati tri tražena primjera');
+assert(ui.includes("demoMode?jobsDemoRecords():realItems"),'Demo zapisi moraju biti odvojeni od stvarnih');
+console.log('Jobs list tests passed');
