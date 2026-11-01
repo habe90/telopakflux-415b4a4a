@@ -8,7 +8,7 @@ assert(server.includes("country = ['France', 'Luxembourg', 'Belgium'].includes(r
 
 // Reuse iste komponente kao Postavke → Firma
 assert(auth.includes('<LocationFields form={f} set={set}'),'Registracija mora koristiti istu pretragu lokacije kao Postavke firme');
-assert(auth.includes('<PhoneField form={f} set={set}/>'),'Registracija mora koristiti isto telefonsko polje kao Postavke firme');
+assert(auth.includes('<PhoneField form={f} set={set}'),'Registracija mora koristiti isto telefonsko polje kao Postavke firme');
 
 // 1) Telefon — automatski pozivni broj po državi, ručna izmjena, bez dupliranja
 assert(location.includes("France:'+33',Luxembourg:'+352',Belgium:'+32'"),'Pozivni brojevi moraju odgovarati tabeli');
