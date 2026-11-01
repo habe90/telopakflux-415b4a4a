@@ -12,6 +12,7 @@ import { Login, Register, ForgotPassword, AcceptInvite, PasswordStrength } from 
 import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule, StockModule, MaintenanceModule, ReportsModule, SettingsModule, exportToPDF } from './Modules';
 import AIAssistant from './AIAssistant';
 import { OwnerOverview, OwnerCompanies, OwnerUsers, OwnerAudit, OwnerSettings } from './PlatformOwner';
+import { AddressSearchFields } from './LocationFields';
 import { DataProvider, useData } from './store';
 import { parseAppLocation, navigateApp, pageUrl, replaceQuery, requestedInternalUrl } from './router';
 import {buildDemoDashboard} from './dashboardDemo';
@@ -167,8 +168,9 @@ function roleClass(role){return role==='Administrator'?'admin':role==='Kancelari
 
 function NewUserModal({close,onCreate}){
  const [name,setName]=useState(''); const [email,setEmail]=useState(''); const [phone,setPhone]=useState(''); const [role,setRole]=useState('Radnik na terenu');
+ const [address,setAddress]=useState(''); const [postalCode,setPostalCode]=useState(''); const [city,setCity]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
- const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{await onCreate({name,email,phone,role});close()}catch(x){setError(x.message)}finally{setBusy(false)}}
+ const submit=async e=>{e.preventDefault();setBusy(true);setError('');try{await onCreate({name,email,phone,role,address,postal_code:postalCode,city});close()}catch(x){setError(x.message)}finally{setBusy(false)}}
  return <div className="modal-backdrop" onMouseDown={close}><div className="modal user-modal" onMouseDown={e=>e.stopPropagation()}>
   <div className="modal-head"><div><span className="modal-kicker">NOVI ČLAN TIMA</span><h2>Kreiraj korisnički račun</h2><p>Radniku ćemo poslati siguran link za postavljanje lozinke.</p></div><button className="icon-btn" onClick={close}><X/></button></div>
   <form onSubmit={submit}>
@@ -176,6 +178,9 @@ function NewUserModal({close,onCreate}){
     <label className="full">Ime i prezime<input value={name} onChange={e=>setName(e.target.value)} placeholder="npr. Amar Selimović" required/></label>
     <label>Email adresa<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="amar@telopak.ba" required/></label>
     <label>Broj telefona<input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+387 6X XXX XXX"/></label>
+    <div className="full employee-address-section"><h4>Adresa zaposlenika <small>(opcionalno)</small></h4></div>
+    <label className="full">Adresa (ulica i broj)<input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Opcionalno"/></label>
+    <div className="full"><AddressSearchFields postalCode={postalCode} city={city} onPostal={setPostalCode} onCity={setCity}/></div>
     <label className="full">Uloga i nivo pristupa
      <select value={role} onChange={e=>setRole(e.target.value)}><option>Administrator</option><option>Kancelarija</option><option>Radnik na terenu</option></select>
      <span className="field-help">{role==='Administrator'?'Potpuni pristup sistemu, korisnicima i postavkama.':role==='Kancelarija'?'Pristup klijentima, poslovima, ponudama i računima.':'Pristup vlastitom rasporedu i dodijeljenim intervencijama.'}</span>
@@ -204,7 +209,7 @@ function UserActionModal({user,mode,close,onSave,onToggle,onDelete,onResend,onNo
     <div className="access-card"><ShieldCheck/><div><strong>Pristup aplikaciji</strong><p>{user.status==='Aktivan'?'Korisnik se može prijaviti i koristiti funkcije dozvoljene njegovom ulogom.':'Pristup je blokiran. Korisnik se ne može prijaviti ni koristiti postojeću sesiju.'}</p></div></div>
     <div className="recent-login"><div><span className="status-dot"></span><div><strong>Posljednja prijava</strong><p>25.03.2025. u 14:35 · Sarajevo, BiH</p></div></div><small>Chrome · Windows</small></div>
    </div>}
-   {mode==='edit'&&<div className="form-grid"><label className="full">Ime i prezime<input value={form.name} onChange={e=>set('name',e.target.value)} required/></label><label>Email adresa<input type="email" value={form.email} onChange={e=>set('email',e.target.value)} required/></label><label>Broj telefona<input value={form.phone} onChange={e=>set('phone',e.target.value)}/></label><label className="full">Uloga i nivo pristupa<select value={form.role} onChange={e=>set('role',e.target.value)}><option>Administrator</option><option>Kancelarija</option><option>Radnik na terenu</option></select><span className="field-help">Promjena uloge odmah mijenja dozvole korisnika.</span></label></div>}
+   {mode==='edit'&&<div className="form-grid"><label className="full">Ime i prezime<input value={form.name} onChange={e=>set('name',e.target.value)} required/></label><label>Email adresa<input type="email" value={form.email} onChange={e=>set('email',e.target.value)} required/></label><label>Broj telefona<input value={form.phone} onChange={e=>set('phone',e.target.value)}/></label><div className="full employee-address-section"><h4>Adresa zaposlenika <small>(opcionalno)</small></h4></div><label className="full">Adresa (ulica i broj)<input value={form.address||''} onChange={e=>set('address',e.target.value)} placeholder="Opcionalno"/></label><div className="full"><AddressSearchFields postalCode={form.postal_code||''} city={form.city||''} onPostal={v=>set('postal_code',v)} onCity={v=>set('city',v)}/></div><label className="full">Uloga i nivo pristupa<select value={form.role} onChange={e=>set('role',e.target.value)}><option>Administrator</option><option>Kancelarija</option><option>Radnik na terenu</option></select><span className="field-help">Promjena uloge odmah mijenja dozvole korisnika.</span></label></div>}
    {mode==='resend'&&<div className="confirm-content"><div className="confirm-icon blue"><Send/></div><h3>Poslati novu pozivnicu?</h3><p>Novi pristupni link poslat ćemo korisniku <strong>{user.name}</strong> na:</p><div className="confirm-email"><Mail/>{user.email}</div><div className="modal-note"><Info/> Prethodno poslani link automatski će prestati važiti. Nova pozivnica važi 48 sati.</div></div>}
    {mode==='status'&&<div className="confirm-content"><div className={`confirm-icon ${user.status==='Aktivan'?'amber':'green'}`}>{user.status==='Aktivan'?<Ban/>:<RotateCcw/>}</div><h3>{user.status==='Aktivan'?'Odmah ukinuti pristup?':'Ponovo omogućiti pristup?'}</h3><p>{user.status==='Aktivan'?<><strong>{user.name}</strong> će biti odjavljen sa svih uređaja i neće se moći ponovo prijaviti dok ga ne aktivirate.</>:<><strong>{user.name}</strong> će se ponovo moći prijaviti i koristiti aplikaciju prema dodijeljenoj ulozi.</>}</p>{user.status==='Aktivan'&&<label className="full reason-label">Razlog deaktivacije<select><option>Prestanak radnog odnosa</option><option>Privremeno odsustvo</option><option>Sigurnosni razlog</option><option>Drugo</option></select></label>}</div>}
    {mode==='delete'&&<div className="confirm-content"><div className="confirm-icon red"><Trash2/></div><h3>Ovo se ne može poništiti</h3><p>Nalog korisnika <strong>{user.name}</strong> bit će trajno obrisan. Poslovni zapisi koje je kreirao ostaju sačuvani radi evidencije.</p><label className="delete-check"><input type="checkbox" required/> Razumijem da je brisanje trajno i želim nastaviti.</label></div>}
@@ -228,7 +233,7 @@ function UsersManagement({openIntent,onIntentHandled}){
  const notify=message=>{setNotice(message);window.setTimeout(()=>setNotice(''),4000)};
  const toggleStatus=async id=>{const user=users.find(x=>x.id===id);const saved=await teamApi(`/${id}`,{method:'PUT',body:JSON.stringify({status:user.status==='Aktivan'?'Neaktivan':'Aktivan'})});setUsers(a=>a.map(x=>x.id===id?decorate(saved):x))};
  const removeUser=async id=>{await teamApi(`/${id}`,{method:'DELETE'});setUsers(a=>a.filter(x=>x.id!==id))};
- const saveUser=async user=>{const saved=await teamApi(`/${user.id}`,{method:'PUT',body:JSON.stringify({name:user.name,email:user.email,phone:user.phone,role:user.role,status:user.status})});setUsers(a=>a.map(x=>x.id===user.id?decorate(saved):x))};
+ const saveUser=async user=>{const saved=await teamApi(`/${user.id}`,{method:'PUT',body:JSON.stringify({name:user.name,email:user.email,phone:user.phone,address:user.address,postal_code:user.postal_code,city:user.city,role:user.role,status:user.status})});setUsers(a=>a.map(x=>x.id===user.id?decorate(saved):x))};
  const addUser=async nu=>{const saved=await teamApi('',{method:'POST',body:JSON.stringify(nu)});setUsers(a=>[decorate(saved),...a]);notify(saved.emailDelivered?'Korisnik je kreiran i pristupni podaci su poslani emailom.':'Korisnik je kreiran, ali email nije poslan. Provjerite SMTP postavke.');return saved};
  const total=users.length; const active=users.filter(u=>u.status==='Aktivan').length; const inactive=total-active;
  const openAction=(user,mode)=>setAction({user,mode});
