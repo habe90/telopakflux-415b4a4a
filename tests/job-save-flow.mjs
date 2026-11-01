@@ -1,0 +1,13 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const store=fs.readFileSync('src/store.jsx','utf8'),ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8');
+assert(store.includes('const createJob=payload=>saveJob(payload)'),'Posao mora imati direktan potvrđeni POST tok');
+assert(store.includes("if(!saved?.id)throw new Error('Server nije potvrdio upis posla.')"),'Čuvanje mora zahtijevati ID servera');
+assert(store.includes('d.jobs.some(x=>String(x.id)===String(saved.id))'),'Isti posao ne smije biti dodat dvaput');
+assert(ui.includes('const save=async f=>')&&ui.includes('await createJob(payload)'),'Lista Poslovi mora čekati stvarni upis');
+assert(ui.includes("setError(e.message||'Posao nije sačuvan."),'Greška mora ostati u otvorenoj formi');
+assert(ui.includes("Posao ${saved.no||`#${saved.id}`} je sačuvan."),'Potvrda se prikazuje tek nakon server odgovora');
+assert(ui.includes("Trenutni filter ga skriva.")&&ui.includes('Otvori posao'),'Skriveni novi posao mora imati akciju otvaranja');
+assert(server.includes("app.post('/api/jobs',requireAuth"),'Backend mora eksplicitno potvrditi čuvanje posla');
+assert(server.includes('company_id:req.user.company_id'),'Posao mora biti vezan za prijavljenu firmu');
+assert(server.includes('RETURNING *'),'Backend mora vratiti zapis s ID-em');
+console.log('Job save flow tests passed');
