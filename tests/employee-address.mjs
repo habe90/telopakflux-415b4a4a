@@ -1,0 +1,14 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const app=fs.readFileSync('src/App.jsx','utf8'),location=fs.readFileSync('src/LocationFields.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+for(const col of ['address','postal_code','city'])assert(migration.includes(`app_users ADD COLUMN IF NOT EXISTS ${col}`),`Nedostaje migracija app_users.${col}`);
+assert(server.includes('`id,name,email,phone,address,postal_code,city,role,status,email_verified,created_at,updated_at`'),'Select korisnika mora vraćati adresu');
+assert(server.includes('String(b.address||\'\').slice(0,200)')&&server.includes('String(b.postal_code||\'\').slice(0,20)')&&server.includes('String(b.city||\'\').slice(0,120)'),'Kreiranje korisnika mora čuvati adresu kao tekst');
+assert(server.includes('address=$4,postal_code=$5,city=$6'),'Izmjena korisnika mora čuvati adresu');
+assert(location.includes('export function AddressSearchFields')&&location.includes('export function Combo'),'Mora postojati ponovo upotrebljiva pretraga adrese');
+assert(app.includes("import { AddressSearchFields } from './LocationFields'"),'NewUserModal mora koristiti zajedničku pretragu adrese');
+assert(app.includes('Adresa zaposlenika')&&(app.match(/Adresa zaposlenika/g)||[]).length>=2,'Sekcija mora postojati u oba obrasca (novi i uredi)');
+assert(app.includes('onCreate({name,email,phone,role,address,postal_code:postalCode,city})'),'Kreiranje korisnika mora slati adresu');
+assert(app.includes('address:user.address,postal_code:user.postal_code,city:user.city'),'Čuvanje izmjena mora slati adresu');
+assert(app.includes('postalCode={form.postal_code||\'\'} city={form.city||\'\'}'),'Obrazac za uređivanje mora biti popunjen sačuvanim vrijednostima');
+assert(css.includes('.employee-address-grid{grid-template-columns:1fr 1fr}')&&css.includes('@media(max-width:760px){.employee-address-grid{grid-template-columns:1fr}}'),'Poštanski broj i grad moraju biti u redu na računaru, a jedno ispod drugog na telefonu');
+console.log('Employee address tests passed');
