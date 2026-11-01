@@ -10,5 +10,5 @@ assert(app.includes('Adresa zaposlenika')&&(app.match(/Adresa zaposlenika/g)||[]
 assert(app.includes('onCreate({name,email,phone,role,address,postal_code:postalCode,city})'),'Kreiranje korisnika mora slati adresu');
 assert(app.includes('address:user.address,postal_code:user.postal_code,city:user.city'),'Čuvanje izmjena mora slati adresu');
 assert(app.includes('postalCode={form.postal_code||\'\'} city={form.city||\'\'}'),'Obrazac za uređivanje mora biti popunjen sačuvanim vrijednostima');
-assert(css.includes('.employee-address-grid{grid-template-columns:1fr 1fr}')&&css.includes('@media(max-width:760px){.employee-address-grid{grid-template-columns:1fr}}'),'Poštanski broj i grad moraju biti u redu na računaru, a jedno ispod drugog na telefonu');
+assert(css.includes('.employee-address-grid{display:grid;width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:15px}')&&css.includes('@media(max-width:760px){.employee-address-grid{grid-template-columns:1fr}}'),'Poštanski broj i grad moraju biti u redu pune širine na računaru, a jedno ispod drugog na telefonu');
 console.log('Employee address tests passed');
