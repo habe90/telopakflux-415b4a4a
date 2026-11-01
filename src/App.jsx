@@ -214,7 +214,7 @@ function UserActionModal({user,mode,close,onSave,onToggle,onDelete,onResend,onNo
  </div></div>
 }
 
-function formatJoinedDate(value){if(!value)return'—';const d=new Date(value);if(Number.isNaN(d.getTime()))return'—';return new Intl.DateTimeFormat('bs-BA',{day:'2-digit',month:'2-digit',year:'numeric'}).format(d).replace(/\.$/,'')}
+function formatJoinedDate(value){if(!value)return'—';const raw=String(value);const iso=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);if(iso)return`${iso[3]}.${iso[2]}.${iso[1]}`;const d=new Date(value);if(Number.isNaN(d.getTime()))return'—';return new Intl.DateTimeFormat('bs-BA',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'}).format(d).replace(/\.$/,'')}
 
 function UsersManagement({openIntent,onIntentHandled}){
  const [users,setUsers]=useState([]); const [openModal,setOpenModal]=useState(false); const [action,setAction]=useState(null); const [notice,setNotice]=useState(''); const [error,setError]=useState(''); const [loading,setLoading]=useState(true);
