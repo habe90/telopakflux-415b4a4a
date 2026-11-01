@@ -2,6 +2,7 @@ import React, {useMemo,useState,useRef,useEffect} from 'react';
 import {Plus,Search,SlidersHorizontal,MoreHorizontal,X,Check,Trash2,Edit3,Eye,Users,BriefcaseBusiness,FileText,ReceiptText,Package,Wrench,CalendarDays,Clock3,MapPin,Phone,Mail,Building2,UserRound,Euro,AlertTriangle,CheckCircle2,Send,Download,TrendingUp,WalletCards,BarChart3,Settings,ShieldCheck,ChevronLeft,ChevronRight,Save,Archive,Truck,RefreshCw,Filter,Lock,ArrowRight,Copy,Smartphone,Ban,UserCog,ImagePlus} from 'lucide-react';
 import {useData} from './store';
 import {replaceQuery,navigateApp} from './router';
+import CompanySettings from './CompanySettings';
 
 const routeParams=()=>new URLSearchParams(window.location.search);
 function useRouteState(key,fallback){const[value,setValue]=useState(()=>routeParams().get(key)||fallback);const update=v=>{setValue(v);replaceQuery({[key]:v===fallback?'':v})};return[value,update]}
@@ -376,7 +377,8 @@ function ActivityLogModal({close}){
  return <ModalShell title="Dnevnik aktivnosti" sub="Stvarne promjene u radnom prostoru." close={close} wide><div className="activity-log-list">{error&&<p className="otp-error"><AlertTriangle/>{error}</p>}{rows.map(a=><div className="activity-log-row" key={a.id}><span className="activity-log-icon"><Edit3/></span><div><strong>{auditLabels[a.action]||a.action}</strong><span>{a.actor||'Sistem'} · {a.ip_address||'IP nije dostupna'}</span></div><small>{new Date(a.created_at).toLocaleString('bs-BA')}</small></div>)}{!error&&!rows.length&&<Empty/>}</div><div className="modal-actions"><button type="button" className="primary" onClick={close}><Check/> Zatvori</button></div></ModalShell>
 }
 
-export function SettingsModule(){const [tab,setTab]=useRouteState('tab','Firma'),[saved,setSaved]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
+export function SettingsModule(){const[tab,setTab]=useRouteState('tab','Firma');if(tab==='Firma')return <div className="settings-company-screen"><div className="settings-layout"><nav className="settings-nav">{['Firma','Dokumenti','Obavijesti','Sigurnost'].map(x=><button key={x} className={tab===x?'active':''} onClick={()=>setTab(x)}>{x}</button>)}</nav><section><CompanySettings/></section></div></div>;return <LegacySettingsModule/>}
+function LegacySettingsModule(){const [tab,setTab]=useRouteState('tab','Firma'),[saved,setSaved]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [twoFAEnabled,setTwoFAEnabled]=useState(false); const [twoFAModal,setTwoFAModal]=useState(null); const [twoFaNotice,setTwoFaNotice]=useState('');
  const [company,setCompany]=useState({name:'',taxId:'',siret:'',tvaNumber:'',phone:'',email:'',website:'',address:'',postalCode:'',city:'',country:'France',logo:null});
  const [docSettings,setDocSettings]=useState({currency:'EUR',taxRate:'17',prefix:'R-',offerPrefix:'PN-',dueDays:'7',note:''});
