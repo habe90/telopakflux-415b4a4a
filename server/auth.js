@@ -15,7 +15,7 @@ export function passwordValid(password = '') {
   return password.length >= 12 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 export function publicUser(row) {
-  return { id: row.id, name: row.name, email: row.email, phone: row.phone || '', avatar: row.avatar_data || null, role: row.role, isPlatformOwner: row.role === 'Platform Owner', companyId: row.company_id, emailVerified: !!row.email_verified, twoFactorEnabled: !!row.two_factor_enabled };
+  return { id: row.id, name: row.name, email: row.email, phone: row.phone || '', avatar: row.avatar_data || null, role: row.role, isPlatformOwner: row.role === 'Platform Owner', companyId: row.company_id, emailVerified: !!row.email_verified, twoFactorEnabled: !!row.two_factor_enabled, mustChangePassword: !!row.must_change_password };
 }
 export function setSessionCookie(res, token, remember = false) {
   res.cookie(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: remember ? 30 * 86400000 : SESSION_DAYS * 86400000 });
@@ -43,13 +43,14 @@ export async function requireAuth(req, res, next) {
     req.user = r.rows[0]; req.sessionId = r.rows[0].session_id; next();
   } catch (e) { next(e); }
 }
-export async function sendSecurityEmail({ to, subject, message }) {
+export async function sendSecurityEmail({ to, subject, message, html }) {
   const hasSmtp = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
-  if (!hasSmtp) { console.log('[SECURITY EMAIL — SMTP NIJE PODEŠEN, SIMULACIJA]', { to, subject, message }); return { delivered: false, reason: 'SMTP nije podešen u env varijablama servera.' }; }
+  if (!hasSmtp) { return { delivered: false, reason: 'SMTP nije podešen u env varijablama servera.' }; }
   try {
     const nodemailer = (await import('nodemailer')).default;
     const transporter = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: Number(process.env.SMTP_PORT) === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } });
-    const info = await transporter.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, text: message });
+    const fromAddress=process.env.SMTP_FROM||process.env.SMTP_USER;
+    const info = await transporter.sendMail({ from: {name:'TeloPakFlux',address:fromAddress}, to, subject, text: message, html: html || undefined });
     console.log('[SECURITY EMAIL — POSLANO]', { to, subject, messageId: info?.messageId, response: info?.response });
     return { delivered: true };
   } catch (err) {
