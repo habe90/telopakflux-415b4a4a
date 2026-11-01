@@ -10,8 +10,10 @@ assert(ui.includes("Trenutni filter ga skriva.")&&ui.includes('Otvori posao'),'S
 assert(server.includes("app.post('/api/jobs',requireAuth"),'Backend mora eksplicitno potvrditi čuvanje posla');
 assert(server.includes('company_id:req.user.company_id'),'Posao mora biti vezan za prijavljenu firmu');
 assert(server.includes('RETURNING *'),'Backend mora vratiti zapis s ID-em');
-// Regresija: INSERT upit mora koristiti prave $N placeholdere, ne gole brojeve (uzrok "Posao nije sačuvan")
-const jobsInsertMatch=server.match(/INSERT INTO jobs \(\$\{cols\.join\(','\)\}\) VALUES \(\$\{cols\.map\(\(_,i\)=>`([^`]+)`\)\.join\(','\)\}\)/);
-assert(jobsInsertMatch,'Mora postojati parametrizovan INSERT upit za jobs');
-assert.equal(jobsInsertMatch[1],'${i+1}','Placeholderi moraju biti $1,$2,... (sa znakom $), ne goli brojevi 1,2,...');
+const jobsRouteIdx=server.indexOf("app.post('/api/jobs'");
+assert(jobsRouteIdx>-1,'Mora postojati POST ruta za jobs');
+const jobsRoute=server.slice(jobsRouteIdx,jobsRouteIdx+1200);
+const placeholderBuilder="placeholders=cols.map(function(_,i){return '"+String.fromCharCode(36)+"'+(i+1)})";
+assert(jobsRoute.includes(placeholderBuilder),'Placeholderi za jobs moraju eksplicitno graditi $1,$2,... preko string konkatenacije, ne gole brojeve');
+assert(jobsRoute.includes('VALUES (${placeholders}) RETURNING *'),'INSERT mora koristiti promjenljivu placeholders');
 console.log('Job save flow tests passed');
