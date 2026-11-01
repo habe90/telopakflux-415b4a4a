@@ -44,7 +44,10 @@ export function DataProvider({children}){
  const createDocument=(kind,payload)=>documentRequest(kind,'POST',payload);
  const updateDocument=(kind,id,payload)=>documentRequest(kind,'PUT',payload,id);
  const deleteDocument=(kind,id)=>documentRequest(kind,'DELETE',null,id);
- const value={...data,setClients:setter('clients'),setJobs:setter('jobs'),setOffers:setter('offers'),setInvoices:setter('invoices'),setStock:setter('stock'),setMaintenance:setter('maintenance'),createDocument,updateDocument,deleteDocument,loading,backendOnline,error,lastUpdated,hasLoaded,reload:load};
+ const saveJob=async(payload,id=null)=>{const clean={...payload};delete clean.id;delete clean.created_at;delete clean.company_id;const saved=await request(`jobs${id?`/${id}`:''}`,{method:id?'PUT':'POST',body:JSON.stringify(clean)});if(!saved?.id)throw new Error('Server nije potvrdio upis posla.');setData(d=>({...d,jobs:id?d.jobs.map(x=>String(x.id)===String(id)?saved:x):d.jobs.some(x=>String(x.id)===String(saved.id))?d.jobs:[saved,...d.jobs]}));setBackendOnline(true);setError('');return saved};
+ const createJob=payload=>saveJob(payload);
+ const updateJob=(id,payload)=>saveJob(payload,id);
+ const value={...data,setClients:setter('clients'),setJobs:setter('jobs'),setOffers:setter('offers'),setInvoices:setter('invoices'),setStock:setter('stock'),setMaintenance:setter('maintenance'),createJob,updateJob,createDocument,updateDocument,deleteDocument,loading,backendOnline,error,lastUpdated,hasLoaded,reload:load};
  return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }
 export function useData(){return useContext(DataContext)}
