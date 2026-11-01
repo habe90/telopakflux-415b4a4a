@@ -1,0 +1,13 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const auth=fs.readFileSync('src/Auth.jsx','utf8'),loc=fs.readFileSync('src/LocationFields.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(auth.includes("KORAK 1 OD 2 · PODACI O FIRMI")&&auth.includes('Unesite osnovne podatke o svojoj firmi.'),'Registracija mora prikazati stvarni korak i uvod');
+assert(auth.includes('TVA broj <span className="optional-mark">(opcionalno)</span>')&&auth.includes('TVA broj možete dodati kasnije u postavkama firme.'),'TVA oznaka i napomena moraju biti precizne');
+assert(loc.includes('placeholder="npr. 57100"')&&loc.includes('placeholder="npr. Thionville"')&&loc.includes('placeholder="npr. 57 – Moselle"'),'Lokacijska polja moraju imati kratke primjere');
+assert(loc.includes('<span>{x.postal_code} — {x.city}</span>'),'Prijedlog mora prikazati poštanski broj i grad');
+assert(loc.includes('className="location-combo department-combo"'),'Departman mora imati zasebnu klasu reda');
+assert(css.includes('.register-company-form,.register-company-form *{box-sizing:border-box}')&&css.includes('width:100%;max-width:100%;min-width:0'),'Forma ne smije širiti karticu');
+assert(css.includes('grid-template-columns:minmax(0,1fr) minmax(0,1fr)')&&css.includes('.department-combo{grid-column:1/-1'),'Poštanski broj i grad moraju biti u istom redu, a departman u punom redu');
+assert(css.includes('@media(max-width:560px){.register-company-form .location-three-grid{grid-template-columns:minmax(0,1fr)}'),'Na uskoj kartici lokacija mora biti u jednoj koloni');
+assert(css.includes('padding:0 34px 0 38px')&&css.includes('top:50%;transform:translateY(-50%)'),'Ikone moraju biti unutar polja i vertikalno centrirane bez prekrivanja teksta');
+assert(css.includes('.register-company-form .phone-field>div{width:100%;height:43px'),'Telefon mora biti cjelina pune širine i iste visine');
+console.log('Registration layout tests passed');
