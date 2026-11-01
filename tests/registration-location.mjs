@@ -18,7 +18,7 @@ assert(auth.includes("phone_prefix:hasIntl?x.phone_prefix:countryPrefix(v)"),'Pr
 assert(auth.includes("if(f.country==='France'&&!f.department_code)errs.department_code='Odaberite francuski departman.'"),'Departman mora biti obavezan samo za Francusku');
 assert(location.includes("department:form.department_code||''"),'Pretraga mjesta mora se suziti na odabrani departman');
 assert(location.includes('set(\'department_code\',x.department_code);set(\'department_name\',d?.name||\'\')'),'Odabir grada mora automatski popuniti departman');
-assert(location.includes("country==='France'&&<label"),'Departman se prikazuje samo za Francusku');
+assert(location.includes("country==='France'&&(departmentsUnavailable?"),'Departman se prikazuje samo za Francusku, uz ručni unos kad servis nije dostupan');
 
 // 2) Registracijski broj — po državi, SIRET/RCS/BCE validacija
 assert(server.includes("function validateRegistrationNumber(country, raw)"),'Backend mora imati validaciju registracijskog broja po državi');
