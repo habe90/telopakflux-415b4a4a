@@ -164,6 +164,9 @@ async function run() {
   await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS two_factor_backup_hashes jsonb DEFAULT '[]'::jsonb`);
   await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false`);
   await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS temporary_password_expires_at timestamptz`);
+  await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS address text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS postal_code text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS city text NOT NULL DEFAULT ''`);
   await pool.query(`CREATE TABLE IF NOT EXISTS company_settings (
     company_id int PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
     company_name text NOT NULL DEFAULT '', tax_id text DEFAULT '', siret text DEFAULT '', tva_number text DEFAULT '', postal_code text DEFAULT '', country text NOT NULL DEFAULT 'France', address text DEFAULT '', city text DEFAULT '',
