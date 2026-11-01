@@ -234,7 +234,7 @@ function UsersManagement({openIntent,onIntentHandled}){
  const toggleStatus=async id=>{const user=users.find(x=>x.id===id);const saved=await teamApi(`/${id}`,{method:'PUT',body:JSON.stringify({status:user.status==='Aktivan'?'Neaktivan':'Aktivan'})});setUsers(a=>a.map(x=>x.id===id?decorate(saved):x))};
  const removeUser=async id=>{await teamApi(`/${id}`,{method:'DELETE'});setUsers(a=>a.filter(x=>x.id!==id))};
  const saveUser=async user=>{const saved=await teamApi(`/${user.id}`,{method:'PUT',body:JSON.stringify({name:user.name,email:user.email,phone:user.phone,address:user.address,postal_code:user.postal_code,city:user.city,role:user.role,status:user.status})});setUsers(a=>a.map(x=>x.id===user.id?decorate(saved):x))};
- const addUser=async nu=>{const saved=await teamApi('',{method:'POST',body:JSON.stringify(nu)});setUsers(a=>[decorate(saved),...a]);notify(saved.emailDelivered?'Korisnik je kreiran i pristupni podaci su poslani emailom.':'Korisnik je kreiran, ali email nije poslan. Provjerite SMTP postavke.');return saved};
+ const addUser=async nu=>{const saved=await teamApi('',{method:'POST',body:JSON.stringify(nu)});setUsers(a=>[decorate(saved),...a]);notify(saved.emailDelivered?'Korisnik je kreiran i pristupni podaci su poslani emailom.':`Korisnik je kreiran, ali email nije poslan: ${saved.emailError||'servis je odbio poruku'}. Pristup možete ponovo poslati iz tabele korisnika.`);return saved};
  const total=users.length; const active=users.filter(u=>u.status==='Aktivan').length; const inactive=total-active;
  const openAction=(user,mode)=>setAction({user,mode});
  return <>
