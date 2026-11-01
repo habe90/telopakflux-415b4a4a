@@ -1,0 +1,10 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const ui=fs.readFileSync('src/LocationFields.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(ui.includes('className="employee-address-grid"')&&!ui.includes('className="location-three-grid employee-address-grid"'),'Adresa zaposlenika mora imati vlastiti grid pune širine');
+assert(ui.includes('placeholder="npr. 57100"'),'Poštanski broj mora imati kratki primjer');
+assert(ui.includes('placeholder="npr. Thionville"'),'Grad mora imati kratki primjer');
+assert(!ui.includes('placeholder="Opcionalno, ili pretražite"'),'Stari placeholder mora biti uklonjen');
+assert(css.includes('.employee-address-grid{display:grid;width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:15px}'),'Polja moraju zauzeti punu širinu u dvije jednake kolone');
+assert(css.includes('.employee-address-grid .combo-input input{margin-top:0!important;padding-left:38px!important;padding-right:32px!important}'),'Tekst mora imati dovoljno prostora od ikona');
+assert(css.includes('@media(max-width:760px){.employee-address-grid{grid-template-columns:1fr}}'),'Na telefonu polja moraju biti jedno ispod drugog');
+console.log('Employee address layout tests passed');
