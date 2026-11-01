@@ -148,21 +148,46 @@ app.get('/api/debug/smtp', async (req, res) => {
 });
 
 // ---------- Sigurna autentifikacija ----------
+function validateRegistrationNumber(country, raw) {
+  const registration = String(raw || '').replace(/\s/g, '').toUpperCase();
+  if (country === 'France') {
+    if (!/^\d{14}$/.test(registration)) return { error: 'SIRET mora sadržavati tačno 14 cifara.' };
+    return { value: registration, siren: registration.slice(0, 9) };
+  }
+  if (country === 'Luxembourg') {
+    if (!/^B\d{6,8}$/.test(registration)) return { error: 'Luksemburški RCS broj mora biti u formatu B123456.' };
+    return { value: registration, siren: '' };
+  }
+  if (country === 'Belgium') {
+    if (!/^0?\d{9,10}$/.test(registration.replace(/[.-]/g, ''))) return { error: 'Belgijski broj preduzeća mora sadržavati 10 cifara.' };
+    return { value: registration, siren: '' };
+  }
+  return { error: 'Država sjedišta je obavezna.' };
+}
 app.post('/api/auth/register', strictLimiter, async (req, res) => {
   try {
-    const { company, industry, workers, address, postal_code, city, siret, tva_number, company_phone, name, password } = req.body || {};
+    const { company, industry, workers, address, postal_code, city, registration_number, siret, tva_number, company_phone, phone_prefix, department_code, department_name, name, password } = req.body || {};
     const email = normalizeEmail(req.body?.email);
-    const cleanSiret=String(siret||'').replace(/\s/g,'');
-    if (!company || !address || !postal_code || !city || !cleanSiret || !name || !email || !passwordValid(password)) return res.status(400).json({ error: 'Popunite sva obavezna polja. Lozinka mora imati najmanje 12 znakova, veliko i malo slovo, broj i specijalni znak.' });
-    if(!/^\d{14}$/.test(cleanSiret))return res.status(400).json({error:'SIRET mora sadržavati tačno 14 cifara.'});
+    const country = ['France', 'Luxembourg', 'Belgium'].includes(req.body?.country) ? req.body.country : '';
+    if (!country) return res.status(400).json({ error: 'Država sjedišta je obavezna.', field: 'country' });
+    if (!company || !address || !postal_code || !city || !name || !email || !passwordValid(password)) return res.status(400).json({ error: 'Popunite sva obavezna polja. Lozinka mora imati najmanje 12 znakova, veliko i malo slovo, broj i specijalni znak.' });
+    const regCheck = validateRegistrationNumber(country, registration_number || siret);
+    if (regCheck.error) return res.status(400).json({ error: regCheck.error, field: 'registration_number' });
+    if (country === 'France' && !String(department_code || '').trim()) return res.status(400).json({ error: 'Odaberite francuski departman.', field: 'department_code' });
     const exists = await pool.query('SELECT id FROM app_users WHERE email=$1', [email]);
     if (exists.rows[0]) return res.status(409).json({ error: 'Nalog sa ovom email adresom već postoji.' });
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       const teamSize=Math.max(1,Number(workers)||1);
-      const c = await client.query(`INSERT INTO companies(name,industry,field_workers,address,postal_code,city,country,siret,tva_number,company_phone) VALUES($1,$2,$3,$4,$5,$6,'France',$7,$8,$9) RETURNING id`, [String(company).trim(), String(industry||'').trim(), teamSize, String(address).trim(), String(postal_code).trim(), String(city).trim(), cleanSiret, String(tva_number||'').trim(), String(company_phone||'').trim()]);
-      await client.query(`INSERT INTO company_settings(company_id,company_name,address,postal_code,city,country,siret,tva_number,tax_id,phone,email) VALUES($1,$2,$3,$4,$5,'France',$6,$7,$7,$8,$9) ON CONFLICT(company_id) DO UPDATE SET company_name=EXCLUDED.company_name,address=EXCLUDED.address,postal_code=EXCLUDED.postal_code,city=EXCLUDED.city,country=EXCLUDED.country,siret=EXCLUDED.siret,tva_number=EXCLUDED.tva_number,tax_id=EXCLUDED.tax_id,phone=EXCLUDED.phone,email=EXCLUDED.email`, [c.rows[0].id,String(company).trim(),String(address).trim(),String(postal_code).trim(),String(city).trim(),cleanSiret,String(tva_number||'').trim(),String(company_phone||'').trim(),email]);
+      const prefix = String(phone_prefix || '').trim();
+      const rawPhone = String(company_phone || '').trim();
+      const fullPhone = rawPhone.startsWith('+') ? rawPhone : [prefix, rawPhone].filter(Boolean).join(' ').trim();
+      const regForFrance = country === 'France' ? regCheck.value : '';
+      const depCodeForFrance = country === 'France' ? String(department_code || '') : '';
+      const depNameForFrance = country === 'France' ? String(department_name || '') : '';
+      const c = await client.query(`INSERT INTO companies(name,industry,field_workers,address,postal_code,city,country,siret,tva_number,company_phone) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`, [String(company).trim(), String(industry||'').trim(), teamSize, String(address).trim(), String(postal_code).trim(), String(city).trim(), country, regForFrance, String(tva_number||'').trim(), fullPhone]);
+      await client.query(`INSERT INTO company_settings(company_id,company_name,address,postal_code,city,country,siret,tva_number,tax_id,phone,email,registration_number,siren,phone_prefix,department_code,department_name,location_verified) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8,$9,$10,$11,$12,$13,$14,$15,true) ON CONFLICT(company_id) DO UPDATE SET company_name=EXCLUDED.company_name,address=EXCLUDED.address,postal_code=EXCLUDED.postal_code,city=EXCLUDED.city,country=EXCLUDED.country,siret=EXCLUDED.siret,tva_number=EXCLUDED.tva_number,tax_id=EXCLUDED.tax_id,phone=EXCLUDED.phone,email=EXCLUDED.email,registration_number=EXCLUDED.registration_number,siren=EXCLUDED.siren,phone_prefix=EXCLUDED.phone_prefix,department_code=EXCLUDED.department_code,department_name=EXCLUDED.department_name,location_verified=EXCLUDED.location_verified`, [c.rows[0].id,String(company).trim(),String(address).trim(),String(postal_code).trim(),String(city).trim(),country,regForFrance,String(tva_number||'').trim(),fullPhone,email,regCheck.value,regCheck.siren||'',prefix,depCodeForFrance,depNameForFrance]);
       const passwordHash = await hashPassword(password);
       const u = await client.query(`INSERT INTO app_users(company_id,name,email,password_hash,role,status,email_verified) VALUES($1,$2,$3,$4,'Administrator','Aktivan',false) RETURNING *`, [c.rows[0].id, name, email, passwordHash]);
       const code = generateCode();
