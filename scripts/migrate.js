@@ -188,6 +188,10 @@ async function run() {
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS siren text NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS industry text NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS team_size text NOT NULL DEFAULT 'Samo ja'`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS phone_prefix text NOT NULL DEFAULT '+33'`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS department_code text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS department_name text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS location_verified boolean NOT NULL DEFAULT false`);
   await pool.query(`CREATE TABLE IF NOT EXISTS company_audit_log (
     id bigserial PRIMARY KEY, company_id int REFERENCES companies(id) ON DELETE CASCADE,
     actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL, action text NOT NULL,
