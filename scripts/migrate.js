@@ -179,6 +179,15 @@ async function run() {
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS postal_code text DEFAULT ''`);
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'France'`);
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS timezone text NOT NULL DEFAULT 'Europe/Paris'`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS legal_form text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS trade_name text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS registered_name text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS share_capital numeric(14,2)`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS owner_name text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS registration_number text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS siren text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS industry text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS team_size text NOT NULL DEFAULT 'Samo ja'`);
   await pool.query(`CREATE TABLE IF NOT EXISTS company_audit_log (
     id bigserial PRIMARY KEY, company_id int REFERENCES companies(id) ON DELETE CASCADE,
     actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL, action text NOT NULL,
