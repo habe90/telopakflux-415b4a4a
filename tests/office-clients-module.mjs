@@ -1,0 +1,15 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),store=fs.readFileSync('src/store.jsx','utf8'),app=fs.readFileSync('src/App.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(ui.includes('label="Ukupno klijenata"')&&ui.includes('label="Novi klijenti ovog mjeseca"')&&ui.includes('label="Klijenti s otvorenim poslovima"'),'Klijenti moraju imati tri tražene kartice');
+assert(ui.includes('const openClientNames=new Set('),'Klijenta s više otvorenih poslova treba brojiti jednom');
+assert(ui.includes('placeholder="Ime, firma, telefon, e-mail ili grad..."'),'Pretraga mora pokrivati tražena polja');
+assert(ui.includes("role==='Kancelarija'||hasHistory||x.archived?null"),'Kancelarija ne smije vidjeti akciju trajnog brisanja');
+assert(server.includes("table === 'clients' && req.user.role === 'Kancelarija'")&&server.includes('Kancelarija ne može trajno brisati klijente.'),'Server mora zabraniti trajno brisanje klijenta kancelariji');
+assert(server.includes("app.get('/api/clients/:id/card'")&&server.includes('WHERE id=$1 AND company_id=$2'),'Kartica i direktni link moraju biti ograničeni na firmu prijavljenog korisnika');
+assert(store.includes('const saveClient=async')&&ui.includes('await saveClient(data,data.id||null)'),'Kancelarija i administrator moraju koristiti isti trajni imenik clients');
+assert(ui.includes('Dodatne servisne lokacije')&&ui.includes('Dodaj lokaciju'),'Uređivanje klijenta mora podržati više lokacija');
+assert(ui.includes('<h4>Povezani poslovi</h4>')&&ui.includes('<h4>Povezane ponude</h4>')&&ui.includes('<h4>Povezani računi</h4>'),'Read-only kartica mora prikazati povezane zapise');
+assert(app.includes("filter:'create-client',data")&&ui.includes("openIntent.filter==='create-client'"),'Novi posao mora otvoriti postojeći obrazac s unaprijed odabranim klijentom');
+assert(ui.includes('f.client_locations.length>1?<Select')&&ui.includes('Odaberite servisnu lokaciju'),'Više lokacija mora ponuditi izbor u obrascu posla');
+assert(css.includes('.clients-table .jobs-col,.clients-table .money-col,.clients-table .phase-col,.clients-table .actions-col{text-align:center!important'),'Posljednje četiri kolone moraju biti centrirane');
+console.log('Office clients module tests passed');
