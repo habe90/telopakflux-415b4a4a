@@ -1,0 +1,16 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),app=fs.readFileSync('src/App.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(app.includes('<JobsModule role={profile?.role}'),'Poslovi moraju dobiti ulogu prijavljenog korisnika');
+assert(server.includes("worker:'',amount:'—'")&&!server.includes("Klijent, vrsta usluge i radnik su obavezni."),'Server mora dozvoliti posao bez dodijeljenog radnika');
+assert(ui.includes('<option value="">Bez dodijeljenog radnika</option>'),'Obrazac mora imati opciju Bez dodijeljenog radnika');
+assert(ui.includes('if(!f.client||!f.service||!f.city)'),'Radnik ne smije biti obavezan pri čuvanju');
+for(const x of ['Otvoreni poslovi','Otvoreni bez radnika','U toku','Završeni ovog mjeseca'])assert(ui.includes(`label="${x}"`),`Nedostaje kartica ${x}`);
+assert(ui.includes("status==='Otvoreni bez radnika'?isUnassigned(x)")&&ui.includes('const isOpen=x=>'),'Klikabilni filteri moraju koristiti tražena pravila');
+assert(ui.includes(" u {x.time||'—'}")&&css.includes('.jobs-table .job-term-col'),'Termin mora biti formatiran s "u" i centriran');
+assert(ui.includes('Dodijeli radnika')&&ui.includes('function AssignWorkerModal'),'Red bez radnika mora omogućiti trajnu dodjelu');
+assert(ui.includes('const saved=await updateJob(x.id,{...x,worker})'),'Dodjela mora ažurirati isti serverski zapis koji koriste raspored i pregled');
+assert(server.includes("table === 'jobs' && req.user.role === 'Kancelarija'")&&server.includes("app.patch('/api/jobs/:id/cancel'"),'Server mora zabraniti brisanje i omogućiti kontrolisano otkazivanje kancelariji');
+assert(ui.includes("role==='Kancelarija'?null")&&ui.includes('title="Otkaži"'),'Kancelarija ne smije dobiti trajno brisanje, već otkazivanje');
+assert(ui.includes("disabled={busy}")&&ui.includes("busy?'Čuvanje...':'Sačuvaj posao'"),'Dvostruki klik mora biti blokiran tokom čuvanja');
+assert(ui.includes('Trenutni filter ga skriva.')&&ui.includes('Posao ${saved.no'),'Uspješno čuvanje mora prikazati broj i upozorenje o aktivnom filteru');
+console.log('Office jobs module tests passed');
