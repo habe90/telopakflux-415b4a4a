@@ -7,7 +7,8 @@ assert(ui.includes('title="Pregled servisnog plana"'),'Pregled mora imati tačan
 for(const label of ['Klijent','Uređaj','Lokacija servisa','Vrsta servisa','Sljedeći termin','Ponavljanje','Odgovorni radnik','Status plana'])assert(ui.includes(`['${label}'`),`Nedostaje tekstualni podatak: ${label}`);
 const view=ui.slice(ui.indexOf('function MaintenancePlanView'),ui.indexOf('function MaintenanceForm'));
 assert(!view.includes('<Input')&&!view.includes('<Select')&&!view.includes('Sačuvaj plan'),'Pregled ne smije sadržavati polja ni čuvanje');
-assert(view.includes('<ModalActions close={close}/>'),'Pregled mora u dnu imati samo standardno dugme Zatvori');
+assert(view.includes('<button type="button" className="primary" onClick={close}>Zatvori</button>'),'Pregled mora u dnu imati samo dugme Zatvori');
+assert(!view.includes('Odustani'),'Pregled ne smije prikazati dugme Odustani');
 const edit=ui.slice(ui.indexOf('function MaintenanceForm'));
 assert(edit.includes('<option>3 mjeseca</option>'),'U uređivanju ponavljanje 3 mjeseca mora ostati promjenjiva opcija padajuće liste');
 console.log('Maintenance plan view tests passed');
