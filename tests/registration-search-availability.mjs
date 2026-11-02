@@ -9,13 +9,13 @@ assert(server.includes("app.get('/api/locations/search',locationsLimiter"),'Pret
 
 // 2) Jedna objedinjena poruka na bosanskom umjesto dvije crvene + žuto upozorenje
 assert(location.includes("LOCATION_UNAVAILABLE_MESSAGE='Pretraga mjesta trenutno nije dostupna. Adresu možete unijeti ručno.'"),'Mora postojati jedinstvena poruka na bosanskom');
-assert(location.includes('{unavailable?<div className="location-search-note"><AlertTriangle/> {LOCATION_UNAVAILABLE_MESSAGE}</div>:'),'Mora se prikazati samo JEDNA poruka kad izvor nije dostupan, ne i obično upozorenje');
+assert(location.includes('{searchUnavailable?<div className="location-search-note"><AlertTriangle/> {LOCATION_UNAVAILABLE_MESSAGE}</div>:'),'Mora se prikazati samo JEDNA poruka kad izvor nije dostupan, ne i obično upozorenje');
 assert(location.includes('error=""'),'Combo instance za poštanski broj/grad ne smiju duplirati crvenu poruku pojedinačno');
 
 // Ručni unos ostaje moguć: poštanski broj i grad se ažuriraju odmah pri unosu, bez obzira na rezultat pretrage
 assert(location.includes("set(q===form.city?'city':'postal_code',q)"),'Upisani poštanski broj/grad mora ostati sačuvan bez obzira na status pretrage');
-// Ručni unos departmana kad servis nije dostupan
-assert(location.includes('manual-department-fields')&&location.includes('Šifra departmana *')&&location.includes('Naziv departmana *'),'Departman mora imati ručni unos kad servis nije dostupan');
+// Departman se više ne oslanja na vanjski servis — ugrađena INSEE lista je uvijek dostupna
+assert(location.includes("import{FRENCH_DEPARTMENTS}from'./frenchDepartments'")&&location.includes('const departments=FRENCH_DEPARTMENTS;'),'Departman mora koristiti ugrađenu listu, bez backend poziva');
 
 // Prelazak na sljedeći korak nije blokiran kad je pretraga nedostupna, ako su polja ispravno popunjena
 assert(auth.includes('&&!f.location_search_unavailable)errs.city='),'Registracija ne smije blokirati nastavak kad pretraga nije dostupna');
