@@ -808,7 +808,7 @@ aside:not(.owner-sidebar) .brand-sidebar-logo img{filter:brightness(0) invert(1)
 .user-table-controls{display:flex;gap:8px}
 .role-filter-select{border:1px solid #dfe6ee;border-radius:7px;padding:0 10px;font-size:11px;background:#fff;height:37px;color:#3c4a5c}
 .report-select{margin:0!important;position:relative}
-.report-select select{margin:0!important;padding-left:34px!important;height:37px;border:1px solid #dfe6ee;background:#fff;font-size:10.5px;border-radius:7px;color:#37475a}
+.report-select select{margin:0!important;padding-left:34px!important;height:37px;border:1px solid #dfe6ee;background:#fff;font-size:10.5px;border-radius:7px;color:#37475a}.report-date-input{font-size:8px!important;font-weight:700;color:#7d8997}.report-date-input input{display:block;width:125px;height:37px;margin-top:5px;border:1px solid #dfe6ee;border-radius:7px;padding:0 10px;font-size:10.5px;color:#37475a}.reports-single{grid-template-columns:1fr}.report-empty-performance{min-height:180px;display:flex;align-items:center;justify-content:center}.report-empty-message,.report-loading{width:100%;text-align:center;color:#7d8c9d;font-size:12px;padding:45px 16px}.worker-performance.report-empty-performance>div{display:block;border:0;padding:0}
 @media(max-width:600px){.user-table-controls{flex-direction:column;align-items:stretch}.role-filter-select{width:100%}.filter-pop{right:auto;left:0}.report-filter{align-items:stretch}}
 
 /* Schedule: week/month, drag & drop, absences */
