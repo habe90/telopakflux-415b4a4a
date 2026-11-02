@@ -1,0 +1,13 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8');
+assert(ui.includes("onView={()=>setModal({type:'view',data:x})}"),'Oko mora otvoriti poseban pregled');
+assert(ui.includes("onEdit={()=>setModal({type:'form',data:x})}"),'Olovka mora nastaviti otvarati obrazac za uređivanje');
+assert(ui.includes('function MaintenancePlanView({data,close})'),'Mora postojati zasebna komponenta pregleda');
+assert(ui.includes('title="Pregled servisnog plana"'),'Pregled mora imati tačan naslov');
+for(const label of ['Klijent','Uređaj','Lokacija servisa','Vrsta servisa','Sljedeći termin','Ponavljanje','Odgovorni radnik','Status plana'])assert(ui.includes(`['${label}'`),`Nedostaje tekstualni podatak: ${label}`);
+const view=ui.slice(ui.indexOf('function MaintenancePlanView'),ui.indexOf('function MaintenanceForm'));
+assert(!view.includes('<Input')&&!view.includes('<Select')&&!view.includes('Sačuvaj plan'),'Pregled ne smije sadržavati polja ni čuvanje');
+assert(view.includes('<ModalActions close={close}/>'),'Pregled mora u dnu imati samo standardno dugme Zatvori');
+const edit=ui.slice(ui.indexOf('function MaintenanceForm'));
+assert(edit.includes('<option>3 mjeseca</option>'),'U uređivanju ponavljanje 3 mjeseca mora ostati promjenjiva opcija padajuće liste');
+console.log('Maintenance plan view tests passed');
