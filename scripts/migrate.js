@@ -280,6 +280,7 @@ async function run() {
   }
 
   console.log('Migracije završene.');
+  await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS timezone text NOT NULL DEFAULT 'Europe/Paris'`);
   await pool.end();
 }
 
