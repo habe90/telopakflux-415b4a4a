@@ -1,0 +1,15 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),css=fs.readFileSync('src/styles.css','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+assert(ui.includes("useState('month')")&&ui.includes('Ovaj mjesec')&&ui.includes('Prošli mjesec')&&ui.includes('Ova godina')&&ui.includes('Sve vrijeme')&&ui.includes('Prilagođeni period'),'Izvještaj mora imati sve periode i početni izbor Ovaj mjesec');
+assert(ui.includes('placeholder="DD.MM.YYYY"')&&ui.includes('report-date-input'),'Prilagođeni period mora imati Od/Do u DD.MM.YYYY formatu');
+assert(server.includes("p.paid_at::date >= $2::date")&&server.includes("p.paid_at::date <= $3::date"),'Uplate moraju uključiti oba granična datuma');
+assert(server.includes('FROM invoice_payments p JOIN invoices i'),'Naplata mora koristiti stvarno evidentirane i djelimične uplate');
+assert(server.includes("j.status='Završeno'")&&server.includes('COALESCE(j.completed_at::date'),'Završeni poslovi moraju se računati prema datumu završetka');
+assert(migration.includes('jobs ADD COLUMN IF NOT EXISTS completed_at timestamptz'),'Posao mora imati stvarni datum završetka');
+assert(ui.includes('Trenutno otvoreni poslovi'),'Otvoreni poslovi moraju biti jasno označeni kao trenutno stanje');
+assert(ui.includes("cards.sent_offers?`${cards.acceptance_rate}%`:'—'")&&ui.includes('Nema poslanih ponuda u ovom periodu'),'Ponude bez poslanih zapisa moraju prikazati crticu i jasnu poruku');
+assert(ui.includes('Nema poslova za odabrani period i radnika.')&&ui.includes("!loading&&!performance.length"),'Prazna poruka se smije prikazati tek nakon učitavanja');
+assert(css.includes('.reports-single{grid-template-columns:1fr}')&&css.includes('.report-empty-performance{min-height:180px'),'Kartica učinka mora koristiti punu širinu i centriranu praznu poruku');
+assert(server.includes("app.get('/api/reports/pdf'")&&server.includes("kv(doc,'Firma:',data.company)")&&server.includes("kv(doc,'Period:',data.period.label)")&&server.includes("kv(doc,'Radnik:',data.worker.label)"),'PDF mora koristiti iste filtre i prikazati firmu, period i radnika');
+assert(server.includes("EXISTS(SELECT 1 FROM jobs j WHERE j.company_id=p.company_id AND j.client=i.client AND j.worker=$4)"),'Uplate jednog radnika moraju biti ograničene na njegove povezane poslove');
+console.log('Reports period/worker tests passed');
