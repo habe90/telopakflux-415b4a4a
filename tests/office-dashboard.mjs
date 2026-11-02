@@ -1,0 +1,15 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const app=fs.readFileSync('src/App.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),css=fs.readFileSync('src/styles.css','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+assert(app.includes("profile?.role==='Kancelarija'?<OfficeDashboard"),'Uloga Kancelarija mora dobiti poseban početni ekran');
+assert(app.includes('<h1>Kancelarijski pregled</h1>')&&app.includes('Današnji raspored tima i stavke koje zahtijevaju vašu pažnju.'),'Zaglavlje mora imati traženi naslov i opis');
+for(const title of ['Današnji termini','Poslovi bez radnika','Ponude koje čekaju odgovor','Računi koji kasne'])assert(app.includes(`title="${title}"`),`Nedostaje kartica ${title}`);
+assert(server.includes("app.get('/api/office/home'")&&server.includes("if(!['Kancelarija','Administrator'].includes(req.user.role))"),'Kancelarijski podaci moraju dolaziti sa zaštićene role-aware rute');
+assert(!app.slice(app.indexOf('function OfficeDashboard'),app.indexOf('function CardHead')).includes('Prihod'),'Kancelarijski ekran ne smije učitavati/prikazivati zbirni prihod');
+assert(server.includes("status<>'Otkazano'")&&server.includes("COALESCE(NULLIF(TRIM(worker),''),'')=''"),'Kartice termina i nedodijeljenih poslova moraju koristiti stvarna pravila');
+assert(server.includes("status='Poslata'")&&server.includes("sent_at IS NOT NULL"),'Ponude moraju biti poslane, važeće i bez nacrta');
+assert(server.includes('invoice_payments')&&server.includes('paid_total'),'Zakašnjeli računi moraju uključiti preostali dug nakon djelimičnih uplata');
+assert(app.includes('Danas nema zakazanih termina.')&&app.includes('Za danas nema otvorenih obaveza.')&&app.includes('Pokušaj ponovo'),'Moraju postojati prazna i greška stanja');
+assert(css.includes('grid-template-columns:minmax(0,2fr) minmax(280px,1fr)')&&css.includes('@media(max-width:900px){.office-dashboard-grid{grid-template-columns:1fr}'),'Raspored mora biti 2/3 + 1/3 na računaru i složen na telefonu');
+assert(migration.includes("timezone text NOT NULL DEFAULT 'Europe/Paris'"),'Datum mora koristiti vremensku zonu firme');
+assert(app.includes("go('Poslovi',{id:j.id})")&&app.includes("go(t.page,{id:t.id})"),'Redovi i obaveze moraju otvarati povezane stvarne zapise');
+console.log('Office dashboard tests passed');
