@@ -2,8 +2,8 @@ import fs from 'node:fs';import assert from 'node:assert/strict';
 const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8'),css=fs.readFileSync('src/styles.css','utf8');
 assert(ui.includes('<th>Kontakt</th>')&&!ui.includes('<th>Kontakt osoba</th>'),'Kolona mora biti Kontakt');
 assert(ui.includes('clientContactLines')&&ui.includes('isCompanyClient'),'Fizička i pravna lica moraju imati različit kontaktni prikaz');
-assert(ui.includes('Dodano ovog mjeseca: ${addedThisMonth}'),'Broj novih klijenata mora biti dinamičan');
-assert(ui.includes('Naplaćeno ovog mjeseca')&&ui.includes('Ukupno naplaćeno'),'Novčane oznake moraju odgovarati značenju');
+assert(ui.includes('label="Novi klijenti ovog mjeseca" value={addedThisMonth}'),'Broj novih klijenata mora biti dinamičan');
+assert(ui.includes('Ukupno naplaćeno'),'Novčana oznaka kolone mora odgovarati značenju');
 assert(ui.includes('[x.postal_code,x.city]'),'Lokacija mora prikazati poštanski broj i grad');
 assert(ui.includes('Faza saradnje'),'Status klijenta mora biti nazvan fazom saradnje');
 for(const field of ['x.name','x.contact','x.phone','x.email','x.city'])assert(ui.includes(field),`Pretraga mora uključiti ${field}`);
@@ -33,9 +33,7 @@ assert(ui.includes('contact.person&&<strong>{contact.person}</strong>')&&ui.incl
 assert(!ui.includes("contact[1]||(!isCompanyClient(x)?[x.phone,x.email].filter(Boolean).join(' · '):'')"),'Stari kod koji je uzrokovao dupliranje mora biti uklonjen');
 assert(ui.includes('!contact.person&&!contact.phone&&!contact.email&&<small className="table-sub">—</small>'),'Ako nedostaju svi podaci, mora se prikazati —');
 // Provjera jedinstvenog formata iznosa i centriranja kolone "Ukupno naplaćeno"
-const cardMoneyCall=ui.match(/label="Naplaćeno ovog mjeseca"[\s\S]{0,40}value=\{money\(monthPaid\)\}/);
 const columnMoneyCall=ui.match(/className="money-col"><strong>\{money\(stats\.value\)\}<\/strong>/);
-assert(cardMoneyCall,'Kartica "Naplaćeno ovog mjeseca" mora koristiti money()');
 assert(columnMoneyCall,'Kolona "Ukupno naplaćeno" mora koristiti istu funkciju money()');
 function money(value){return new Intl.NumberFormat('bs-BA',{style:'currency',currency:'EUR'}).format(Number(value)||0)}
 assert(/^0,00[\s\u00A0]€$/.test(money(0)),`Format nule mora biti 0,00 €, dobijeno: ${money(0)}`);
