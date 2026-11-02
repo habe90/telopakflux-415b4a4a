@@ -1,0 +1,12 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),store=fs.readFileSync('src/store.jsx','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(migration.includes("clients ADD COLUMN IF NOT EXISTS locations jsonb")&&migration.includes("maintenance ADD COLUMN IF NOT EXISTS service_address")&&migration.includes("maintenance ADD COLUMN IF NOT EXISTS first_service_date"),'Lokacije i prvi termin moraju biti trajno sačuvani u PostgreSQL-u');
+assert(ui.includes('Lokacija servisa *')&&ui.includes('Druga adresa — ručni unos')&&ui.includes('ne mijenja osnovnu adresu klijenta'),'Obrazac mora nuditi lokacije klijenta i ručni unos bez izmjene klijenta');
+assert(ui.includes("<td>{x.asset}<small className=\"table-sub maintenance-address\">{x.service_address"),'Tabela mora prikazati uređaj i adresu u dva reda');
+assert(ui.includes("data.id?'Sljedeći termin *':'Datum prvog servisa *'")&&ui.includes('Prvi servis:')&&ui.includes('Naredno ponavljanje:'),'Novi plan mora prikazati prvi termin i pregled ciklusa');
+assert(ui.includes("await save({...f,next:f.first_service_date})")&&ui.includes("first_service_date:f.first_service_date||f.next,next:f.first_service_date||f.next"),'Prvi termin mora ostati sljedeći termin dok servis nije evidentiran');
+assert(ui.includes('Status plana *')&&ui.includes('Odgovorni radnik *'),'Status i radnik moraju biti označeni kao obavezni');
+assert(css.includes('@media(max-width:620px){.maintenance-plan-form{grid-template-columns:1fr}'),'Status i radnik moraju se složiti jedan ispod drugog na telefonu');
+assert(store.includes('const saveMaintenance=async')&&store.includes("if(!saved?.id)throw new Error('Server nije potvrdio upis servisnog plana.')"),'Čuvanje plana mora čekati stvarnu potvrdu servera');
+assert(ui.includes("catch(e){setError(e.message||'Servisni plan nije sačuvan. Uneseni podaci su zadržani.')"),'Neuspješno čuvanje mora zadržati obrazac i unesene podatke');
+console.log('Maintenance plan form tests passed');
