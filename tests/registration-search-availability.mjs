@@ -13,7 +13,7 @@ assert(location.includes('{searchUnavailable?<div className="location-search-not
 assert(location.includes('error=""'),'Combo instance za poštanski broj/grad ne smiju duplirati crvenu poruku pojedinačno');
 
 // Ručni unos ostaje moguć: poštanski broj i grad se ažuriraju odmah pri unosu, bez obzira na rezultat pretrage
-assert(location.includes("set(q===form.city?'city':'postal_code',q)"),'Upisani poštanski broj/grad mora ostati sačuvan bez obzira na status pretrage');
+assert(location.includes("const lookup=(field,q)=>{clearTimeout(timer.current);set(field,q);"),'Upisani poštanski broj/grad mora ostati sačuvan bez obzira na status pretrage, u pravo polje (bez pogađanja po staroj vrijednosti)');
 // Departman se više ne oslanja na vanjski servis — ugrađena INSEE lista je uvijek dostupna
 assert(location.includes("import{FRENCH_DEPARTMENTS}from'./frenchDepartments'")&&location.includes('const departments=FRENCH_DEPARTMENTS;'),'Departman mora koristiti ugrađenu listu, bez backend poziva');
 
