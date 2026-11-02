@@ -550,7 +550,7 @@ function AppShell(){
   }
   const screens={
    'Klijenti':<ClientsModule role={profile?.role} openJob={data=>{setPage('Poslovi');setRecordIntent({filter:'create-client',data,nonce:Date.now()});navigateApp('Poslovi')}} openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
-   'Poslovi':<JobsModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
+   'Poslovi':<JobsModule role={profile?.role} openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Raspored':<ScheduleModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Ponude':<OffersModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Računi':<InvoicesModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
