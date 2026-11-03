@@ -1,0 +1,17 @@
+import fs from'node:fs';import assert from'node:assert/strict';const app=fs.readFileSync('src/App.jsx','utf8'),ui=fs.readFileSync('src/Modules.jsx','utf8'),company=fs.readFileSync('src/CompanySettings.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8');
+assert(app.includes('<Settings/>Postavke firme'),'Meni mora prikazati Postavke firme');
+assert(app.includes("profile?.role!=='Radnik na terenu'"),'Radnik ne smije vidjeti postavke');
+assert(app.includes("'Postavke':<SettingsModule role={profile?.role}/>"),'Modul mora dobiti ulogu');
+assert(!app.includes('<strong>Postavke firme</strong><span>Dokumenti i sigurnost</span>'),'Meni avatara ne smije sadržavati postavke');
+assert(!app.includes('<strong>Korisnici i pristup</strong><span>Upravljanje članovima tima</span>'),'Meni avatara ne smije sadržavati korisnike');
+assert(ui.includes("office=role==='Kancelarija'"),'Postavke moraju prepoznati Kancelariju');
+assert(ui.includes("if(office&&tab!=='Firma')setTab('Firma')"),'F5/direktni tab mora vratiti Kancelariju na Firmu');
+assert(company.includes("readOnly?'Osnovni i kontakt podaci vaše firme.'"),'Kancelarija mora imati traženi podnaslov');
+assert(company.includes('<fieldset disabled={readOnly}'),'Podaci Kancelarije moraju biti readonly');
+assert(company.includes('{!readOnly&&<div><button type="button" className="secondary"'),'Logo akcije moraju biti skrivene');
+assert(company.includes('{!readOnly&&<div className="company-settings-actions">'),'Sačuvaj mora biti skriven');
+assert(server.includes("function requireWorkspaceAdmin(req,res,next)"),'Mora postojati serverska admin zaštita postavki');
+assert(ui.includes("profile.role==='Administrator'&&<div className=\"modal-note full\"")||app.includes("profile.role==='Administrator'&&<div className=\"modal-note full\""),'2FA mora biti u profilu administratora');
+assert(ui.includes("Standardna prema državi")&&ui.includes('FR 20%')&&ui.includes('BE 21%')&&ui.includes('LU 17%'),'Dokumenti moraju ponuditi standardne stope');
+assert(server.includes("tax_rate: null"),'Zadana stopa ne smije biti hardkodovanih 17%');
+assert(ui.includes("settings.tax_rate==null||settings.tax_rate===''")&&ui.includes('STANDARD_VAT_RATES[settings.country]'),'Dokument mora koristiti državu samo bez ručne stope');console.log('Company settings RBAC tests passed');
