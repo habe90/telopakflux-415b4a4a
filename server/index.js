@@ -75,6 +75,7 @@ function crud(table, defaults = {}) {
 
   router.post('/', async (req, res) => {
     try {
+      if(table==='stock'&&req.user.role!=='Administrator')return res.status(403).json({error:'Samo administrator može kreirati novi artikal.'});
       const data = { ...defaults, ...stripId(req.body), company_id: req.user.company_id };
       const cols = Object.keys(data);
       const vals = Object.values(data);
