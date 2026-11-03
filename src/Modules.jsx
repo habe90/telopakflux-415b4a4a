@@ -182,7 +182,7 @@ function weekRangeLabel(monday){const sunday=addDays(monday,6);return monday.get
 function yToTime(relY){let minutes=DAY_START*60+Math.round(((relY-HEAD_PX)/SLOT_PX)*60/30)*30;minutes=Math.max(DAY_START*60,Math.min((DAY_END-1)*60+30,minutes));return `${pad2(Math.floor(minutes/60))}:${pad2(minutes%60)}`;}
 
 export function ScheduleModule({openIntent,onIntentHandled}){
- const {jobs,setJobs,clients,workers}=useData();
+ const {jobs,setJobs,createJob,updateJob,clients,workers}=useData();
  const workerNames=workers.map(w=>w.name);
  const [weekStart,setWeekStart]=useState(()=>mondayOf(SCHEDULE_TODAY));
  const [monthCursor,setMonthCursor]=useState(()=>new Date(SCHEDULE_TODAY.getFullYear(),SCHEDULE_TODAY.getMonth(),1));
@@ -209,27 +209,32 @@ export function ScheduleModule({openIntent,onIntentHandled}){
   setModal({type:'form',data:{status:'Zakazano',priority:'Standardno',date,time,worker:workerFilter!=='Svi radnici'?workerFilter:''}});
  };
 
- const saveJob=f=>{
-  if(isPastSlot(f.date,f.time)){flash('Termin mora biti u budućnosti. Odaberite današnji kasniji termin ili naredni datum.',true);return false;}
-  if(!f.client||!f.service||!f.worker){flash('Odaberite klijenta i radnika te unesite vrstu usluge.',true);return false;}
+ const saveJob=async f=>{
+  if(isPastSlot(f.date,f.time)){const msg='Termin mora biti u budućnosti. Odaberite današnji kasniji termin ili naredni datum.';flash(msg,true);throw new Error(msg);}
+  if(!f.client||!f.service||!f.worker){const msg='Odaberite klijenta i radnika te unesite vrstu usluge.';flash(msg,true);throw new Error(msg);}
   const overlap=checkOverlap(f,f.id);
-  if(overlap){flash(`${f.worker} već ima termin ${overlap.time} (${overlap.client}). Odaberite drugi termin.`,true);return false;}
-  setJobs(a=>f.id?a.map(x=>x.id===f.id?f:x):[...a,{...f,id:Date.now(),no:`P-${1054+a.length}`}]);
+  if(overlap){const msg=`${f.worker} već ima termin ${overlap.time} (${overlap.client}). Odaberite drugi termin.`;flash(msg,true);throw new Error(msg);}
+  let saved;
+  try{saved=f.id?await updateJob(f.id,f):await createJob(f);}
+  catch(e){const msg=e.message||'Termin nije sačuvan na serveru. Pokušajte ponovo.';flash(msg,true);throw new Error(msg);}
+  if(!saved?.id){const msg='Server nije potvrdio čuvanje termina.';flash(msg,true);throw new Error(msg);}
   setModal(null);
-  flash(`Termin za ${f.client||'klijenta'} je sačuvan.`);
-  return true;
+  flash(`Termin za ${saved.client||'klijenta'} je sačuvan.`);
+  return saved;
  };
- const deleteJob=job=>{setJobs(a=>a.filter(x=>x.id!==job.id));setModal(null);setSelected(null);flash('Termin je obrisan.');};
- const reassignWorker=(job,worker)=>{
+ const deleteJob=async job=>{try{await setJobs(a=>a.filter(x=>x.id!==job.id));setModal(null);setSelected(null);flash('Termin je obrisan.');}catch(e){flash(e.message||'Termin nije obrisan na serveru.',true);}};
+ const reassignWorker=async(job,worker)=>{
   const updated={...job,worker};
   const overlap=checkOverlap(updated,job.id);
-  setJobs(a=>a.map(x=>x.id===job.id?updated:x));
-  setSelected(updated);
-  flash(overlap?`Upozorenje: ${worker} već ima termin u to vrijeme.`:`Radnik promijenjen na ${worker}.`,!!overlap);
+  try{
+   const saved=await updateJob(job.id,updated);
+   setSelected(saved);
+   flash(overlap?`Upozorenje: ${worker} već ima termin u to vrijeme.`:`Radnik promijenjen na ${worker}.`,!!overlap);
+  }catch(e){flash(e.message||'Radnik nije promijenjen na serveru.',true);}
  };
- const setJobStatus=(job,status)=>{const updated={...job,status};setJobs(a=>a.map(x=>x.id===job.id?updated:x));setSelected(updated);flash(`Status ažuriran na "${status}".`);};
+ const setJobStatus=async(job,status)=>{try{const saved=await updateJob(job.id,{...job,status});setSelected(saved);flash(`Status ažuriran na "${status}".`);}catch(e){flash(e.message||'Status nije ažuriran na serveru.',true);}};
 
- const handleDrop=(e,day)=>{
+ const handleDrop=async(e,day)=>{
   e.preventDefault();setDragOverKey('');
   const id=Number(e.dataTransfer.getData('text/plain'));
   const job=jobs.find(x=>x.id===id);if(!job)return;
@@ -239,8 +244,8 @@ export function ScheduleModule({openIntent,onIntentHandled}){
   if(isPastSlot(updated.date,updated.time)){flash('Termin nije moguće premjestiti u prošlost.',true);return;}
   const overlap=checkOverlap(updated,job.id);
   if(overlap){flash(`${job.worker} već ima termin ${overlap.time} (${overlap.client}). Premještanje nije izvršeno.`,true);return;}
-  setJobs(a=>a.map(x=>x.id===id?updated:x));
-  flash(`Termin premješten na ${updated.date} u ${newTime}.`);
+  try{await updateJob(id,updated);flash(`Termin premješten na ${updated.date} u ${newTime}.`);}
+  catch(e){flash(e.message||'Termin nije premješten na serveru.',true);}
  };
  const dayClick=(e,day)=>{
   if(e.target.closest('.schedule-job'))return;
@@ -304,11 +309,11 @@ export function ScheduleModule({openIntent,onIntentHandled}){
     const otherMonth=d.getMonth()!==monthCursor.getMonth();
     const isToday=sameDate(d,SCHEDULE_TODAY);
     const past=new Date(d.getFullYear(),d.getMonth(),d.getDate())<SCHEDULE_TODAY;
-    return <button type="button" key={i} disabled={past} title={past?'Nije moguće zakazati termin u prošlosti':'Kliknite za novi termin'} className={`month-cell ${otherMonth?'otherMonth':''} ${isToday?'today':''} ${past?'past-day':''}`} onClick={()=>openNewSlot(d,'08:00')}>
+    const visible=dayJobs.slice(0,3),extra=dayJobs.length-visible.length;
+    return <div key={i} className={`month-cell ${otherMonth?'otherMonth':''} ${isToday?'today':''} ${past?'past-day':''}`} role="button" tabIndex={past?-1:0} title={past?'Nije moguće zakazati termin u prošlosti':'Kliknite za novi termin'} onClick={e=>{if(e.target.closest('.m-job-line')||past)return;openNewSlot(d,'08:00')}} onKeyDown={e=>{if(!past&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openNewSlot(d,'08:00')}}}>
      <strong>{d.getDate()}</strong>
-     {dayJobs.length>0&&<div className="m-dots">{dayJobs.slice(0,4).map(j=><span key={j.id} className={`m-dot ${toneOfWorker(j.worker,workers)}`}/>)}</div>}
-     {dayJobs.length>0&&<span className="m-more">{dayJobs.length} termin{dayJobs.length===1?'':'a'}</span>}
-    </button>;
+     {dayJobs.length>0&&<div className="m-jobs">{visible.map(j=><button type="button" key={j.id} className={`m-job-line ${toneOfWorker(j.worker,workers)}`} onClick={e=>{e.stopPropagation();setSelected(j)}}><i className="m-dot"/><span className="m-job-time">{j.time}</span><span className="m-job-text">{j.client} · {j.service}</span></button>)}{extra>0&&<span className="m-more">+{extra} više</span>}</div>}
+    </div>;
    })}</div>
   </>}
  </section>
