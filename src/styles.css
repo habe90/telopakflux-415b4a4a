@@ -728,9 +728,11 @@ aside:not(.owner-sidebar) .brand-sidebar-logo img{filter:brightness(0) invert(1)
 .pro-day:hover{background-color:#fbfdff}
 .pro-day.nonworking{cursor:not-allowed}
 .schedule-job{cursor:pointer}
-.month-cell:not(:disabled){cursor:pointer;transition:background .16s,border-color .16s,transform .16s}
-.month-cell:not(:disabled):hover{background:#edf5ff;border-color:#8db9ee;transform:translateY(-1px)}
-.month-cell.past-day,.month-cell:disabled{opacity:.42;cursor:not-allowed;background:#f5f6f8}
+.month-cell:not(.past-day){cursor:pointer;transition:background .16s,border-color .16s,transform .16s}
+.month-cell:not(.past-day):hover{background:#edf5ff;border-color:#8db9ee;transform:translateY(-1px)}
+.month-cell.past-day{opacity:.42;cursor:not-allowed;background:#f5f6f8}
+.month-cell{outline:none}
+.month-cell:focus-visible{box-shadow:0 0 0 3px rgba(23,105,210,.25)}
 .mini-calendar button.past-date,.mini-calendar button:disabled{opacity:.3;cursor:not-allowed;text-decoration:line-through;background:transparent;color:#8793a2}
 .schedule-pro:before{content:'Kliknite na slobodan termin za dodavanje zadatka · Povucite postojeći termin za premještanje';display:block;padding:9px 16px;background:#eef6ff;border-bottom:1px solid #dbeafa;color:#35618e;font-size:11.5px;font-weight:600}
 /* Owner details redesign */
@@ -843,14 +845,24 @@ aside:not(.owner-sidebar) .brand-sidebar-logo img{filter:brightness(0) invert(1)
 .month-weekdays{display:grid;grid-template-columns:repeat(7,1fr);padding:2px 15px 0}
 .month-weekdays span{font-size:8px;text-align:center;color:#8b97a5;font-weight:700;padding:6px 0}
 .month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:6px 15px 18px}
-.month-cell{border:1px solid #edf1f5;border-radius:8px;padding:8px;min-height:84px;cursor:pointer;background:#fff;text-align:left;display:flex;flex-direction:column;gap:5px}
+.month-cell{border:1px solid #edf1f5;border-radius:8px;padding:8px;min-height:104px;cursor:pointer;background:#fff;text-align:left;display:flex;flex-direction:column;gap:5px}
 .month-cell:hover{border-color:#c9dcf3;background:#f8fbff}
 .month-cell.otherMonth{opacity:.4}
 .month-cell.today{border-color:#1769d2;background:#f3f8ff}
 .month-cell strong{font-size:10.5px;color:#33465e}
 .month-cell.today strong{color:#1769d2}
 .m-dots{display:flex;gap:3px;flex-wrap:wrap}
-.m-dot{width:6px;height:6px;border-radius:50%;display:block}
+.m-dot{width:6px;height:6px;border-radius:50%;display:block;flex:none}
 .m-more{font-size:7.5px;color:#8492a4;margin-top:auto}
+.m-jobs{display:flex;flex-direction:column;gap:3px}
+.m-job-line{display:flex;align-items:center;gap:5px;border:0;background:#f4f8fc;border-radius:5px;padding:3px 5px;text-align:left;width:100%;min-width:0}
+.m-job-line:hover{background:#e7f1fc}
+.m-job-line .m-dot{margin-top:0}
+.m-job-line.marko .m-dot{background:#2379d5}
+.m-job-line.ivan .m-dot{background:#20a46a}
+.m-job-line.petar .m-dot{background:#8063d2}
+.m-job-line.gray .m-dot{background:#8b97a5}
+.m-job-time{font-size:7.2px;font-weight:800;color:#33465e;flex:none}
+.m-job-text{font-size:7.2px;color:#51637a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .m-absence{font-size:6.8px;font-weight:700;color:#b13a3a;background:#fdeceb;border-radius:4px;padding:2px 4px;display:inline-block;width:fit-content}
 @media(max-width:900px){.pro-week.days7{min-width:900px}.month-grid,.month-weekdays{min-width:700px}.schedule-pro{overflow:auto}}
