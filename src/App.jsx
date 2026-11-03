@@ -168,7 +168,7 @@ function Schedule({openNew}){return <><div className="page-head"><div><p classNa
 
 function roleClass(role){return role==='Administrator'?'admin':role==='Kancelarija'?'kancelarija':'radnik'}
 
-function NewUserModal({close,onCreate}){
+function NewUserModal({close,onCreate,officeOnly=false}){
  const [name,setName]=useState(''); const [email,setEmail]=useState(''); const [phone,setPhone]=useState(''); const [role,setRole]=useState('Radnik na terenu');
  const [address,setAddress]=useState(''); const [postalCode,setPostalCode]=useState(''); const [city,setCity]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -184,7 +184,7 @@ function NewUserModal({close,onCreate}){
     <label className="full">Adresa (ulica i broj)<input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Opcionalno"/></label>
     <div className="full"><AddressSearchFields postalCode={postalCode} city={city} onPostal={setPostalCode} onCity={setCity}/></div>
     <label className="full">Uloga i nivo pristupa
-     <select value={role} onChange={e=>setRole(e.target.value)}><option>Administrator</option><option>Kancelarija</option><option>Radnik na terenu</option></select>
+     <select value={role} onChange={e=>setRole(e.target.value)} disabled={officeOnly}>{!officeOnly&&<><option>Administrator</option><option>Kancelarija</option></>}<option>Radnik na terenu</option></select>
      <span className="field-help">{role==='Administrator'?'Potpuni pristup sistemu, korisnicima i postavkama.':role==='Kancelarija'?'Pristup klijentima, poslovima, ponudama i računima.':'Pristup vlastitom rasporedu i dodijeljenim intervencijama.'}</span>
     </label>
     <div className="modal-note full"><Info/> Sistem kreira sigurnu privremenu lozinku i šalje je korisniku emailom. Nakon prve prijave treba je promijeniti.</div>
@@ -223,7 +223,8 @@ function UserActionModal({user,mode,close,onSave,onToggle,onDelete,onResend,onNo
 
 function formatJoinedDate(value){if(!value)return'—';const raw=String(value);const iso=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);if(iso)return`${iso[3]}.${iso[2]}.${iso[1]}`;const d=new Date(value);if(Number.isNaN(d.getTime()))return'—';return new Intl.DateTimeFormat('bs-BA',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'}).format(d).replace(/\.$/,'')}
 
-function UsersManagement({openIntent,onIntentHandled}){
+function UsersManagement({openIntent,onIntentHandled,role}){
+ const officeOnly=role==='Kancelarija';
  const [users,setUsers]=useState([]); const [openModal,setOpenModal]=useState(false); const [action,setAction]=useState(null); const [notice,setNotice]=useState(''); const [error,setError]=useState(''); const [loading,setLoading]=useState(true);
  const [search,setSearch]=useState(''); const [roleFilter,setRoleFilter]=useState('Sve uloge');
  const teamApi=async(path='',options={})=>{const r=await fetch(`/api/team${path}`,{credentials:'include',headers:options.body?{'Content-Type':'application/json'}:undefined,...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Zahtjev nije uspio.');return d};
@@ -231,23 +232,24 @@ function UsersManagement({openIntent,onIntentHandled}){
  const load=()=>{setLoading(true);teamApi().then(d=>{setUsers((Array.isArray(d)?d:[]).map(decorate));setError('')}).catch(e=>setError(e.message)).finally(()=>setLoading(false))};
  useEffect(()=>{load()},[]);
  useEffect(()=>{if(!openIntent)return;const found=users.find(x=>String(x.id)===String(openIntent.id));if(found)setAction({user:found,mode:'detail'});onIntentHandled?.()},[openIntent?.nonce,users]);
- const filteredUsers=users.filter(u=>`${u.name} ${u.email} ${u.phone}`.toLowerCase().includes(search.toLowerCase()) && (roleFilter==='Sve uloge'||u.role===roleFilter));
+ const visibleUsers=officeOnly?users.filter(u=>u.role==='Radnik na terenu'):users;
+ const filteredUsers=visibleUsers.filter(u=>`${u.name} ${u.email} ${u.phone}`.toLowerCase().includes(search.toLowerCase()) && (officeOnly||roleFilter==='Sve uloge'||u.role===roleFilter));
  const notify=message=>{setNotice(message);window.setTimeout(()=>setNotice(''),4000)};
  const toggleStatus=async id=>{const user=users.find(x=>x.id===id);const saved=await teamApi(`/${id}`,{method:'PUT',body:JSON.stringify({status:user.status==='Aktivan'?'Neaktivan':'Aktivan'})});setUsers(a=>a.map(x=>x.id===id?decorate(saved):x))};
  const removeUser=async id=>{await teamApi(`/${id}`,{method:'DELETE'});setUsers(a=>a.filter(x=>x.id!==id))};
  const saveUser=async user=>{const saved=await teamApi(`/${user.id}`,{method:'PUT',body:JSON.stringify({name:user.name,email:user.email,phone:user.phone,address:user.address,postal_code:user.postal_code,city:user.city,role:user.role,status:user.status})});setUsers(a=>a.map(x=>x.id===user.id?decorate(saved):x))};
  const addUser=async nu=>{const saved=await teamApi('',{method:'POST',body:JSON.stringify(nu)});setUsers(a=>[decorate(saved),...a]);notify(saved.emailDelivered?'Korisnik je kreiran i pristupni podaci su poslani emailom.':`Korisnik je kreiran, ali email nije poslan: ${saved.emailError||'servis je odbio poruku'}. Pristup možete ponovo poslati iz tabele korisnika.`);return saved};
- const total=users.length; const active=users.filter(u=>u.status==='Aktivan').length; const inactive=total-active;
+ const total=visibleUsers.length; const active=visibleUsers.filter(u=>u.status==='Aktivan').length; const inactive=total-active;
  const openAction=(user,mode)=>setAction({user,mode});
  return <>
-  <div className="page-head"><div><p className="eyebrow">ADMINISTRACIJA TIMA</p><h1>Korisnici i pristup</h1><p>Upravljajte nalozima zaposlenih i njihovim pristupom aplikaciji.</p></div><button className="primary" onClick={()=>setOpenModal(true)}><Plus/> Novi korisnik</button></div>
-  <section className="security-banner"><div className="security-icon"><ShieldCheck/></div><div><strong>Sigurnost sistema</strong><p>Čim neko napusti firmu, deaktivirajte njegov nalog. Aktivne sesije bit će prekinute, a pristup poslovnim podacima odmah blokiran.</p></div></section>
+  <div className="page-head"><div><p className="eyebrow">ADMINISTRACIJA TIMA</p><h1>{officeOnly?'Radnici na terenu':'Korisnici i pristup'}</h1><p>{officeOnly?'Pregledajte i dodajte radnike na terenu svoje firme.':'Upravljajte nalozima zaposlenih i njihovim pristupom aplikaciji.'}</p></div><button className="primary" onClick={()=>setOpenModal(true)}><Plus/> {officeOnly?'Novi radnik':'Novi korisnik'}</button></div>
+  {!officeOnly&&<section className="security-banner"><div className="security-icon"><ShieldCheck/></div><div><strong>Sigurnost sistema</strong><p>Čim neko napusti firmu, deaktivirajte njegov nalog. Aktivne sesije bit će prekinute, a pristup poslovnim podacima odmah blokiran.</p></div></section>}
   <section className="stats-grid mini"><Stat title="Ukupno korisnika" value={String(total)} meta="Svi nalozi u sistemu" icon={UserCog} tone="blue"/><Stat title="Aktivni nalozi" value={String(active)} meta="Trenutno imaju pristup" icon={CheckCircle2} tone="green"/><Stat title="Neaktivni / blokirani" value={String(inactive)} meta="Bez pristupa aplikaciji" icon={Ban} tone="red"/></section>
   {error&&<div className="schedule-warning"><AlertTriangle/> {error}</div>}
-  <section className="card"><div className="user-table-head"><div><h3>Svi korisnici</h3><p>{filteredUsers.length} od {total} naloga povezanih sa vašom firmom</p></div><div className="user-table-controls"><div className="search-inner"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pretraži članove tima..."/></div><select className="role-filter-select" value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}><option>Sve uloge</option><option>Administrator</option><option>Kancelarija</option><option>Radnik na terenu</option></select></div></div>
-   <div className="table-wrap"><table className="users-access-table"><thead><tr><th>Korisnik</th><th>Kontakt</th><th className="users-role-col">Uloga</th><th>Pridružen</th><th className="users-status-col">Status</th><th className="users-actions-col">Akcije</th></tr></thead><tbody>{loading&&<tr><td colSpan={6} className="empty-row">Učitavanje korisnika...</td></tr>}{!loading&&!filteredUsers.length&&<tr><td colSpan={6} className="empty-row">Nema korisnika za odabranu pretragu ili filter.</td></tr>}{filteredUsers.map(u=><tr key={u.id} className="clickable-row" onClick={()=>openAction(u,'detail')}><td><div className="client-cell"><span className="avatar square" style={{background:u.color}}>{u.initials}</span><strong>{u.name}</strong></div></td><td><div className="contact-cell"><span>{u.email}</span><small>{u.phone}</small></div></td><td className="users-role-col"><span className={`role-badge ${roleClass(u.role)}`}>{u.role}</span></td><td>{u.joined}</td><td className="users-status-col"><Badge>{u.status}</Badge></td><td className="users-actions-col"><div className="row-actions" onClick={e=>e.stopPropagation()}><button className="action-text-btn" onClick={()=>openAction(u,'edit')}>Uredi</button><button className="icon-btn sm" title="Pošalji pristup" onClick={()=>openAction(u,'resend')}><Send/></button><button className="icon-btn sm" title={u.status==='Aktivan'?'Deaktiviraj':'Aktiviraj'} onClick={()=>openAction(u,'status')}>{u.status==='Aktivan'?<Ban/>:<RotateCcw/>}</button><button className="icon-btn sm danger" title="Obriši" onClick={()=>openAction(u,'delete')}><Trash2/></button></div></td></tr>)}</tbody></table></div>
+  <section className="card"><div className="user-table-head"><div><h3>{officeOnly?'Radnici na terenu':'Svi korisnici'}</h3><p>{filteredUsers.length} od {total} naloga povezanih sa vašom firmom</p></div><div className="user-table-controls"><div className="search-inner"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pretraži članove tima..."/></div>{!officeOnly&&<select className="role-filter-select" value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}><option>Sve uloge</option><option>Administrator</option><option>Kancelarija</option><option>Radnik na terenu</option></select>}</div></div>
+   <div className="table-wrap"><table className="users-access-table"><thead><tr><th>Korisnik</th><th>Kontakt</th><th className="users-role-col">Uloga</th><th>Pridružen</th><th className="users-status-col">Status</th><th className="users-actions-col">Akcije</th></tr></thead><tbody>{loading&&<tr><td colSpan={6} className="empty-row">Učitavanje korisnika...</td></tr>}{!loading&&!filteredUsers.length&&<tr><td colSpan={6} className="empty-row">Nema korisnika za odabranu pretragu ili filter.</td></tr>}{filteredUsers.map(u=><tr key={u.id} className="clickable-row" onClick={()=>openAction(u,'detail')}><td><div className="client-cell"><span className="avatar square" style={{background:u.color}}>{u.initials}</span><strong>{u.name}</strong></div></td><td><div className="contact-cell"><span>{u.email}</span><small>{u.phone}</small></div></td><td className="users-role-col"><span className={`role-badge ${roleClass(u.role)}`}>{u.role}</span></td><td>{u.joined}</td><td className="users-status-col"><Badge>{u.status}</Badge></td><td className="users-actions-col"><div className="row-actions" onClick={e=>e.stopPropagation()}>{!officeOnly&&<><button className="action-text-btn" onClick={()=>openAction(u,'edit')}>Uredi</button><button className="icon-btn sm" title="Pošalji pristup" onClick={()=>openAction(u,'resend')}><Send/></button><button className="icon-btn sm" title={u.status==='Aktivan'?'Deaktiviraj':'Aktiviraj'} onClick={()=>openAction(u,'status')}>{u.status==='Aktivan'?<Ban/>:<RotateCcw/>}</button><button className="icon-btn sm danger" title="Obriši" onClick={()=>openAction(u,'delete')}><Trash2/></button></>}</div></td></tr>)}</tbody></table></div>
   </section>
-  {openModal&&<NewUserModal close={()=>setOpenModal(false)} onCreate={addUser}/>} {action&&<UserActionModal {...action} close={()=>setAction(null)} onSave={saveUser} onToggle={toggleStatus} onDelete={removeUser} onResend={id=>teamApi(`/${id}/resend`,{method:'POST'})} onNotice={notify}/>} {notice&&<div className="toast"><CheckCircle2/><div><strong>Uspješno</strong><span>{notice}</span></div><button onClick={()=>setNotice('')}><X/></button></div>}
+  {openModal&&<NewUserModal officeOnly={officeOnly} close={()=>setOpenModal(false)} onCreate={addUser}/>} {action&&<UserActionModal {...action} close={()=>setAction(null)} onSave={saveUser} onToggle={toggleStatus} onDelete={removeUser} onResend={id=>teamApi(`/${id}/resend`,{method:'POST'})} onNotice={notify}/>} {notice&&<div className="toast"><CheckCircle2/><div><strong>Uspješno</strong><span>{notice}</span></div><button onClick={()=>setNotice('')}><X/></button></div>}
  </>
 }
 
@@ -559,7 +561,7 @@ function AppShell(){
    'AI pomoćnik':<AIAssistant onBack={leaveAssistant} onOpenRecord={openAssistantRecord}/>,
    'Izvještaji':<ReportsModule/>,
    'Postavke':<SettingsModule/>,
-   'Korisnici':<UsersManagement openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>
+   'Korisnici':<UsersManagement role={profile?.role} openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>
   };
   return page==='Početna'?(profile?.role==='Kancelarija'?<OfficeDashboard openNew={()=>setModal(true)} go={go}/>:<Dashboard openNew={()=>setModal(true)} go={go} notify={notify} profile={profile}/>):screens[page];
  },[page,isOwner,profile]);
