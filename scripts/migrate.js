@@ -108,6 +108,15 @@ async function run() {
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS completed_at timestamptz`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS worker_id int REFERENCES app_users(id) ON DELETE SET NULL`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS service_address text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS started_at timestamptz`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS job_events (
+    id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    job_id int NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL,
+    event_type text NOT NULL CHECK(event_type IN ('started','completed')),
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_job_events_job ON job_events(company_id,job_id,created_at)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_worker_date ON jobs(company_id,worker_id,date)`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
