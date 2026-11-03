@@ -103,6 +103,7 @@ async function run() {
   await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS postal_code text NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false`);
   await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS locations jsonb NOT NULL DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS completed_at timestamptz`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
