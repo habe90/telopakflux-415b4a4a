@@ -7,7 +7,7 @@ assert(server.includes("app.get('/api/reminders/prepare/:type/:id'"),'Backend mo
 assert(server.includes("app.post('/api/reminders/draft'"),'Backend mora čuvati nacrt');
 assert(server.includes("app.post('/api/reminders/send'"),'Backend mora slati podsjetnik');
 assert(server.includes('idempotency_key'),'Slanje mora spriječiti duplikate');
-assert(server.includes("ctx.status==='Plaćen'||ctx.remaining<=0"),'Prije slanja mora se ponovo provjeriti dug');
+assert(server.includes("ctx.status==='Nacrt'||ctx.status==='Stornirano'||ctx.remaining<=0"),'Prije slanja mora se ponovo provjeriti dug prema stvarno evidentiranim uplatama');
 assert(migration.includes('CREATE TABLE IF NOT EXISTS reminder_drafts'),'Podsjetnici moraju imati trajnu evidenciju');
 assert(server.includes("sendSecurityEmail({to:email"),'Podsjetnik mora koristiti postojeći email servis');
 console.log('Reminder tests passed');
