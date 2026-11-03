@@ -4,7 +4,7 @@ import {
   Package, Wrench, BarChart3, Settings, Search, Bell, Plus, ChevronDown,
   ArrowUpRight, ArrowDownRight, MoreHorizontal, MapPin, Clock3, CheckCircle2,
   AlertCircle, TrendingUp, WalletCards, Menu, X, Phone, Mail, SlidersHorizontal,
-  ArrowRight, Zap, Droplets, Wind, Hammer, UserRound, Check, Circle, ChevronRight,
+  ArrowRight, Zap, Droplets, Wind, Hammer, UserRound, Check, Circle, ChevronRight, ChevronLeft,
   LogOut, UserCog, ShieldCheck, Ban, Trash2, Send, RotateCcw, Info, Bot, Save, Edit3, Eye, Download,
   Laptop, Smartphone, Globe, AlertTriangle, Building2, Archive, Activity, Database, Server, CreditCard, ScrollText, Play
 } from 'lucide-react';
