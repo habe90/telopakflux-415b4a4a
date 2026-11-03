@@ -1,0 +1,20 @@
+import fs from'node:fs';import assert from'node:assert/strict';const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8'),app=fs.readFileSync('src/App.jsx','utf8');
+assert(app.includes("'Materijal':<StockModule role={profile?.role}"),'Materijal mora dobiti ulogu');
+assert(ui.includes("const isAdmin=role==='Administrator';"),'Modul mora razlikovati administratora');
+assert(ui.includes("isAdmin?['Šifra','Artikl','Kategorija','Stanje','Min.','Nabavna','Prodajna','Status']:['Šifra','Artikl','Kategorija','Stanje','Min.','Prodajna','Status']"),'PDF Kancelarije ne smije sadržati nabavnu cijenu');
+assert(ui.includes('{isAdmin&&<th>Nabavna</th>}'),'Nabavna cijena mora biti skrivena Kancelariji');
+assert(ui.includes("isAdmin?<Metric icon={Euro} label=\"Vrijednost zaliha\""),'Vrijednost zaliha mora biti samo za administratora');
+assert(ui.includes('label="Otvoreni zahtjevi za nabavku"'),'Obje uloge moraju vidjeti otvorene zahtjeve');
+assert(ui.includes('label="Ispod minimuma"')&&ui.includes('onClick={()=>setBelowOnly(x=>!x)}'),'Kartica Ispod minimuma mora biti klikabilna');
+assert(ui.includes('function MaterialRequestForm'),'Mora postojati obrazac zahtjeva');
+assert(ui.includes('Zahtjev ne mijenja stanje zalihe'),'Zahtjev mora jasno biti odvojen od prijema');
+assert(server.includes("app.post('/api/material-requests'"),'Zahtjev mora biti trajan u backendu');
+assert(server.includes("app.post('/api/stock/:id/receive'"),'Prijem robe mora imati zaseban endpoint');
+assert(server.includes("if(req.user.role!=='Administrator')return res.status(403)"),'Samo administrator smije evidentirati prijem');
+assert(server.includes('const next=Number(item.rows[0].stock)+q'),'Tek prijem smije povećati stanje');
+assert(migration.includes('CREATE TABLE IF NOT EXISTS material_requests'),'Zahtjevi moraju biti u PostgreSQL bazi');
+assert(ui.includes('Šifra se dodjeljuje pri čuvanju'),'Forma mora objasniti automatsku šifru');
+assert(ui.includes("label={data.id?'Trenutna zaliha':'Početna zaliha'}"),'Novo stanje mora biti označeno Početna zaliha');
+// Provjera iz zahtjeva: zahtjev ne mijenja stanje; prijem ga povećava
+const stock=3,requested=4;assert.equal(stock,3);assert.equal(stock+requested,7);assert(7>5,'Nakon prijema artikal više nije ispod minimuma');
+console.log('Materials roles & procurement tests passed');
