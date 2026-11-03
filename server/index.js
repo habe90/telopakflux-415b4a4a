@@ -421,9 +421,15 @@ function requireCompanyAdmin(req, res, next) {
   if (!['Administrator', 'Platform Owner'].includes(req.user?.role)) return res.status(403).json({ error: 'Samo administrator firme može upravljati korisnicima.' });
   next();
 }
+function requireTeamCreator(req,res,next){
+  if(!['Administrator','Kancelarija','Platform Owner'].includes(req.user?.role))return res.status(403).json({error:'Nemate pravo dodavati korisnike.'});
+  if(req.user.role==='Kancelarija'&&req.body?.role!=='Radnik na terenu')return res.status(403).json({error:'Kancelarija može dodati samo radnika na terenu.'});
+  if(req.body?.company_id!==undefined&&Number(req.body.company_id)!==Number(req.user.company_id))return res.status(403).json({error:'Korisnika nije moguće dodati u drugu firmu.'});
+  next();
+}
 const teamUserSelect = `id,name,email,phone,address,postal_code,city,role,status,email_verified,created_at,updated_at`;
-app.get('/api/team', requireAuth, async (req, res) => { try { const r = await pool.query(`SELECT ${teamUserSelect} FROM app_users WHERE company_id=$1 AND role<>'Platform Owner' ORDER BY created_at DESC`, [req.user.company_id]); res.json(r.rows); } catch (e) { console.error(e); res.status(500).json({ error: 'Korisnike firme nije moguće učitati.' }); } });
-app.post('/api/team', requireAuth, requireCompanyAdmin, strictLimiter, async (req, res) => { try {
+app.get('/api/team', requireAuth, async (req, res) => { try { const office=req.user.role==='Kancelarija';const r = await pool.query(`SELECT ${teamUserSelect} FROM app_users WHERE company_id=$1 AND role<>'Platform Owner' AND ($2::boolean=false OR role='Radnik na terenu') ORDER BY created_at DESC`, [req.user.company_id,office]); res.json(r.rows); } catch (e) { console.error(e); res.status(500).json({ error: 'Korisnike firme nije moguće učitati.' }); } });
+app.post('/api/team', requireAuth, requireTeamCreator, strictLimiter, async (req, res) => { try {
   const b = req.body || {}, name = String(b.name || '').trim(), email = normalizeEmail(b.email), role = ['Administrator', 'Kancelarija', 'Radnik na terenu'].includes(b.role) ? b.role : 'Radnik na terenu';
   if (!name) return res.status(400).json({ error: 'Ime i prezime su obavezni.' }); if (!email || !email.includes('@')) return res.status(400).json({ error: 'Unesite ispravnu email adresu.' });
   if ((await pool.query('SELECT 1 FROM app_users WHERE email=$1', [email])).rows[0]) return res.status(409).json({ error: 'Korisnik sa ovom email adresom već postoji.' });
