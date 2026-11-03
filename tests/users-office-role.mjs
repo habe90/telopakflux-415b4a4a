@@ -1,0 +1,12 @@
+import fs from'node:fs';import assert from'node:assert/strict';const ui=fs.readFileSync('src/App.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8');
+assert(ui.includes("'Korisnici':<UsersManagement role={profile?.role}"),'Modul mora dobiti ulogu');
+assert(ui.includes("officeOnly?'Radnici na terenu':'Korisnici i pristup'"),'Kancelarija mora vidjeti naslov Radnici na terenu');
+assert(ui.includes("officeOnly?'Novi radnik':'Novi korisnik'"),'Kancelarija mora vidjeti Novi radnik');
+assert(ui.includes("const visibleUsers=officeOnly?users.filter(u=>u.role==='Radnik na terenu'):users;"),'Brojači, lista i pretraga Kancelarije moraju obuhvatiti samo radnike');
+assert(ui.includes('disabled={officeOnly}')&&ui.includes('<option>Radnik na terenu</option>'),'Uloga novog radnika mora biti zaključana');
+assert(ui.includes('{!officeOnly&&<><button className="action-text-btn"'),'Administrativne akcije moraju biti skrivene Kancelariji');
+assert(server.includes("if(req.user.role==='Kancelarija'&&req.body?.role!=='Radnik na terenu')return res.status(403)"),'Server mora odbiti višu ulogu');
+assert(server.includes("if(req.body?.company_id!==undefined&&Number(req.body.company_id)!==Number(req.user.company_id))return res.status(403)"),'Server mora odbiti tuđu firmu');
+assert(server.includes("AND ($2::boolean=false OR role='Radnik na terenu')"),'Server Kancelariji mora vratiti samo radnike');
+assert(server.includes("app.post('/api/team', requireAuth, requireTeamCreator, strictLimiter"),'Kancelarija mora moći kreirati dozvoljenog radnika');
+assert(server.includes('sendTeamAccessEmail(req,r.rows[0],temporaryPassword,expiresAt)'),'Postojeći email postupak mora ostati povezan');console.log('Users office role tests passed');
