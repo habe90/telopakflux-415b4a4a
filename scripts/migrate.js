@@ -120,6 +120,16 @@ async function run() {
     created_at timestamptz NOT NULL DEFAULT now()
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_job_events_job ON job_events(company_id,job_id,created_at)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS schedule_change_requests (
+    id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    job_id int NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    requested_by int NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+    reason text NOT NULL, proposed_date text, proposed_time text,
+    status text NOT NULL DEFAULT 'Otvoren' CHECK(status IN ('Otvoren','Odobren','Odbijen')),
+    resolved_by int REFERENCES app_users(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT now(), resolved_at timestamptz
+  )`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_request_open ON schedule_change_requests(job_id) WHERE status='Otvoren'`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_worker_date ON jobs(company_id,worker_id,date)`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
