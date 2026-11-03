@@ -13,6 +13,8 @@ assert(server.includes("app.post('/api/stock/:id/receive'"),'Prijem robe mora im
 assert(server.includes("if(req.user.role!=='Administrator')return res.status(403)"),'Samo administrator smije evidentirati prijem');
 assert(server.includes('const next=Number(item.rows[0].stock)+q'),'Tek prijem smije povećati stanje');
 assert(migration.includes('CREATE TABLE IF NOT EXISTS material_requests'),'Zahtjevi moraju biti u PostgreSQL bazi');
+assert(!migration.includes('REFERENCES users(id)'),'material_requests mora referencirati stvarnu tabelu app_users, ne nepostojeću users (uzrok 502 na produkciji)');
+assert(migration.includes('requested_by integer REFERENCES app_users(id)')&&migration.includes('received_by integer REFERENCES app_users(id)'),'requested_by/received_by moraju referencirati app_users');
 assert(ui.includes('Šifra se dodjeljuje pri čuvanju'),'Forma mora objasniti automatsku šifru');
 assert(ui.includes("label={data.id?'Trenutna zaliha':'Početna zaliha'}"),'Novo stanje mora biti označeno Početna zaliha');
 // Provjera iz zahtjeva: zahtjev ne mijenja stanje; prijem ga povećava
