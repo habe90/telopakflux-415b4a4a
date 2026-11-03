@@ -554,7 +554,7 @@ function AppShell(){
    'Raspored':<ScheduleModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Ponude':<OffersModule role={profile?.role} openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Računi':<InvoicesModule role={profile?.role} openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
-   'Materijal':<StockModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
+   'Materijal':<StockModule role={profile?.role} openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'Održavanje':<MaintenanceModule openIntent={recordIntent} onIntentHandled={()=>setRecordIntent(null)}/>,
    'AI pomoćnik':<AIAssistant onBack={leaveAssistant} onOpenRecord={openAssistantRecord}/>,
    'Izvještaji':<ReportsModule/>,
