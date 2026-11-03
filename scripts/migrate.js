@@ -106,6 +106,9 @@ async function run() {
   await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS completed_at timestamptz`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS worker_id int REFERENCES app_users(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS service_address text NOT NULL DEFAULT ''`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_worker_date ON jobs(company_id,worker_id,date)`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE stock ADD COLUMN IF NOT EXISTS company_id int REFERENCES companies(id) ON DELETE CASCADE`);
