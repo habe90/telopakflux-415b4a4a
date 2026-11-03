@@ -204,7 +204,7 @@ export function StockModule({openIntent,onIntentHandled,role}){
  const [search,setSearch]=useRouteState('q',''),[status,setStatus]=useRouteState('status','Svi statusi'),[modal,setModal]=useState(null),[requests,setRequests]=useState([]),[belowOnly,setBelowOnly]=useState(false),[notice,setNotice]=useState('');
  const isAdmin=role==='Administrator';
  const loadRequests=()=>fetch('/api/material-requests',{credentials:'include'}).then(r=>r.json()).then(d=>setRequests(Array.isArray(d)?d:[])).catch(()=>{});
- useEffect(()=>{loadRequests()},[]);
+ useEffect(()=>{loadRequests();if(role==='Kancelarija'&&routeParams().get('quick')==='request'){setModal({type:'request',data:{}});replaceQuery({quick:null})}},[]);
  useEffect(()=>{if(!openIntent)return;const found=items.find(x=>String(x.id)===String(openIntent.id));if(found)setModal({type:'form',data:found});onIntentHandled?.()},[openIntent?.nonce,items]);
  const below=x=>(Number(x.stock)||0)<=(Number(x.min)||0);
  const filtered=items.filter(x=>`${x.code} ${x.name} ${x.category}`.toLowerCase().includes(search.toLowerCase()) && (status==='Svi statusi'||x.status===status)&&(!belowOnly||below(x)));
@@ -253,6 +253,7 @@ function weekRangeLabel(monday){const sunday=addDays(monday,6);return monday.get
 function yToTime(relY){let minutes=DAY_START*60+Math.round(((relY-HEAD_PX)/SLOT_PX)*60/30)*30;minutes=Math.max(DAY_START*60,Math.min((DAY_END-1)*60+30,minutes));return `${pad2(Math.floor(minutes/60))}:${pad2(minutes%60)}`;}
 
 export function ScheduleModule({openIntent,onIntentHandled}){
+ const quickTerm=routeParams().get('quick')==='term';
  const {jobs,setJobs,createJob,updateJob,clients,workers}=useData();
  const workerNames=workers.map(w=>w.name);
  const [weekStart,setWeekStart]=useState(()=>mondayOf(SCHEDULE_TODAY));
