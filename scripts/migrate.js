@@ -287,7 +287,7 @@ async function run() {
     stock_id integer NOT NULL REFERENCES stock(id) ON DELETE RESTRICT, quantity numeric(14,3) NOT NULL CHECK (quantity > 0),
     job_id integer REFERENCES jobs(id) ON DELETE SET NULL, job_label text NOT NULL DEFAULT '', note text NOT NULL DEFAULT '',
     status text NOT NULL DEFAULT 'Otvoren' CHECK (status IN ('Otvoren','Primljen','Otkazan')),
-    requested_by integer REFERENCES users(id) ON DELETE SET NULL, received_by integer REFERENCES users(id) ON DELETE SET NULL,
+    requested_by integer REFERENCES app_users(id) ON DELETE SET NULL, received_by integer REFERENCES app_users(id) ON DELETE SET NULL,
     received_quantity numeric(14,3), created_at timestamptz NOT NULL DEFAULT now(), received_at timestamptz
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_material_requests_company_status ON material_requests(company_id,status)`);
