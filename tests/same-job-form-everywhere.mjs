@@ -18,7 +18,7 @@ assert(app.includes('save={async f=>{const saved=await createJob(f);setModal(fal
 // Iz kartice klijenta: isti JobForm, unaprijed odabran klijent, izbor ako ima više servisnih adresa.
 assert(app.includes("filter:'create-client',data"),'Klik na "Novi posao" iz kartice klijenta mora otvoriti isti obrazac s podacima klijenta');
 assert(ui.includes("openIntent.filter==='create-client'"),'Poslovi moraju prepoznati namjeru dolaska iz kartice klijenta');
-assert(ui.includes('f.client_locations.length>1?<Select')&&ui.includes('Odaberite servisnu lokaciju'),'Više servisnih adresa mora ponuditi izbor u istom obrascu');
+assert(ui.includes('savedLocations.length>0&&<Select')&&ui.includes('Druga adresa — samo za ovaj posao'),'Servisne adrese moraju ponuditi izbor i ručni unos u istom obrascu');
 
 // Iz rasporeda: isti JobForm s prenesenim datumom/vremenom termina, radnik samo ako je filter aktivan.
 assert(ui.includes("setModal({type:'form',data:{status:'Zakazano',priority:'Standardno',date,time,worker:workerFilter!=='Svi radnici'?workerFilter:''}});"),'Klik na slobodan termin mora prenijeti datum/vrijeme i poštovati filter radnika');
