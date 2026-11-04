@@ -1,0 +1,10 @@
+import fs from'node:fs';import assert from'node:assert/strict';const app=fs.readFileSync('src/App.jsx','utf8'),ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),migration=fs.readFileSync('scripts/migrate.js','utf8');
+assert(app.includes("return`${names[new Date(Date.UTC(y,m-1,d)).getUTCDay()]}, ${String(d).padStart(2,'0')}.${String(m).padStart(2,'0')}.${y}`"),'Datum kancelarije mora biti lokaliziran DD.MM.YYYY');
+assert(app.includes("filter:'today',params:{date:data.today,view:'week',status:'Bez otkazanih'}"));assert(app.includes("filter:'unassigned',params:{status:'Otvoreni bez radnika'}"));assert(app.includes("filter:'waiting',params:{status:'Poslata'}"));assert(app.includes("filter:'overdue',params:{status:'Zakašnjeli s dugom'}"));
+assert(server.includes("schedule_change_requests scr")&&server.includes("scr.status='Otvoren'"));assert(server.includes("status='U toku'")&&server.includes("<$2::date"));
+assert(server.includes("i.status NOT IN ('Nacrt','Stornirano')"),'Kasni samo izdat nestorniran račun');
+assert(migration.includes("'status_changed'")&&migration.includes('previous_status text')&&migration.includes('new_status text'));
+assert(server.includes("previousRow?.status!==saved.status"));assert(server.includes("actor_user_id,event_type,previous_status,new_status"));
+assert(server.includes("app.get('/api/jobs/:id/events'"));assert(ui.includes("e.actor||'Korisnik'"));assert(ui.includes("day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false"));
+assert(ui.includes("if(openIntent.filter==='unassigned')setStatus('Otvoreni bez radnika')"));assert(ui.includes("setStatusFilter('Bez otkazanih')"));
+console.log('Office dashboard workflow tests passed');
