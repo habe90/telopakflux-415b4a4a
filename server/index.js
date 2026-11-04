@@ -300,6 +300,16 @@ app.post('/api/auth/sessions/revoke-others', requireAuth, async (req, res) => { 
 
 app.put('/api/auth/profile', requireAuth, async (req, res) => {
   try {
+    const workerOnly=req.user.role==='Radnik na terenu';
+    const normalizePhone=v=>String(v||'').replace(/[^0-9+]/g,'').replace(/^00/,'+');
+    if(workerOnly){
+      const keys=Object.keys(req.body||{});
+      if(keys.some(k=>k!=='phone'))return res.status(403).json({error:'Radnik može izmijeniti samo broj telefona.'});
+      const phone=String(req.body?.phone||'').trim(),normalized=normalizePhone(phone),current=normalizePhone(req.user.phone);
+      if(!/^\+?[0-9]{7,15}$/.test(normalized))return res.status(400).json({error:'Unesite važeći broj telefona.'});
+      if(normalized===current)return res.status(409).json({error:'Broj telefona nije promijenjen.'});
+      const client=await pool.connect();try{await client.query('BEGIN');const updated=await client.query('UPDATE app_users SET phone=$1,updated_at=now() WHERE id=$2 AND company_id=$3 RETURNING *',[phone.slice(0,40),req.user.id,req.user.company_id]);const recipients=await client.query(`SELECT id FROM app_users WHERE company_id=$1 AND status='Aktivan' AND role IN ('Administrator','Kancelarija')`,[req.user.company_id]);const message=`${req.user.name} je promijenio/la broj telefona.`;for(const u of recipients.rows)await client.query(`INSERT INTO notifications(company_id,user_id,type,title,message,target_page,target_id) VALUES($1,$2,'profile','Promjena broja telefona',$3,'Korisnici',$4)`,[req.user.company_id,u.id,message,String(req.user.id)]);await client.query('COMMIT');return res.json({user:publicUser(updated.rows[0])})}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+    }
     const sets = [], vals = []; let i = 1;
     if (req.body.name !== undefined) {
       if (!String(req.body.name).trim()) return res.status(400).json({ error: 'Ime i prezime su obavezni.' });
