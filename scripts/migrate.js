@@ -112,6 +112,8 @@ async function run() {
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_note text NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_photos jsonb NOT NULL DEFAULT '[]'::jsonb`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS materials_used jsonb NOT NULL DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS create_key text`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_company_create_key ON jobs(company_id,create_key) WHERE create_key IS NOT NULL`);
   await pool.query(`CREATE TABLE IF NOT EXISTS job_events (
     id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     job_id int NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
