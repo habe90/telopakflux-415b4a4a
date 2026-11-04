@@ -3,7 +3,7 @@ const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('serve
 assert(app.includes('<JobsModule role={profile?.role}'),'Poslovi moraju dobiti ulogu prijavljenog korisnika');
 assert(server.includes("worker:'',amount:'—'")&&!server.includes("Klijent, vrsta usluge i radnik su obavezni."),'Server mora dozvoliti posao bez dodijeljenog radnika');
 assert(ui.includes('<option value="">Bez dodijeljenog radnika</option>'),'Obrazac mora imati opciju Bez dodijeljenog radnika');
-assert(ui.includes('if(!f.client||!f.service||!f.city)'),'Radnik ne smije biti obavezan pri čuvanju');
+assert(ui.includes('if(!f.client||!f.service||!f.service_address)'),'Adresa intervencije mora biti obavezna, a radnik ne smije biti obavezan pri čuvanju');
 for(const x of ['Otvoreni poslovi','Otvoreni bez radnika','U toku','Završeni ovog mjeseca'])assert(ui.includes(`label="${x}"`),`Nedostaje kartica ${x}`);
 assert(ui.includes("status==='Otvoreni bez radnika'?isUnassigned(x)")&&ui.includes('const isOpen=x=>'),'Klikabilni filteri moraju koristiti tražena pravila');
 assert(ui.includes(" u {x.time||'—'}")&&css.includes('.jobs-table .job-term-col'),'Termin mora biti formatiran s "u" i centriran');
