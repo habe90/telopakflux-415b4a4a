@@ -119,6 +119,10 @@ async function run() {
     event_type text NOT NULL CHECK(event_type IN ('started','completed')),
     created_at timestamptz NOT NULL DEFAULT now()
   )`);
+  await pool.query(`ALTER TABLE job_events ADD COLUMN IF NOT EXISTS previous_status text`);
+  await pool.query(`ALTER TABLE job_events ADD COLUMN IF NOT EXISTS new_status text`);
+  await pool.query(`ALTER TABLE job_events DROP CONSTRAINT IF EXISTS job_events_event_type_check`);
+  await pool.query(`ALTER TABLE job_events ADD CONSTRAINT job_events_event_type_check CHECK(event_type IN ('started','completed','status_changed'))`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_job_events_job ON job_events(company_id,job_id,created_at)`);
   await pool.query(`CREATE TABLE IF NOT EXISTS schedule_change_requests (
     id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
