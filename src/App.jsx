@@ -9,7 +9,7 @@ import {
   Laptop, Smartphone, Globe, AlertTriangle, Building2, Archive, Activity, Database, Server, CreditCard, ScrollText, Play
 } from 'lucide-react';
 import { Login, Register, ForgotPassword, AcceptInvite, PasswordStrength } from './Auth';
-import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule, StockModule, MaintenanceModule, ReportsModule, SettingsModule, exportToPDF } from './Modules';
+import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule, StockModule, MaintenanceModule, ReportsModule, SettingsModule, exportToPDF, JobForm } from './Modules';
 import AIAssistant from './AIAssistant';
 import { OwnerOverview, OwnerCompanies, OwnerUsers, OwnerAudit, OwnerSettings } from './PlatformOwner';
 import { AddressSearchFields } from './LocationFields';
@@ -322,13 +322,7 @@ function EUDateTimeFields({date,setDate,time,setTime}){
  return <><DateField label="Datum" value={date} onChange={setDate}/><TimeField label="Vrijeme" value={time} onChange={setTime}/></>
 }
 
-function Modal({close,onCreate,clients}){
- const [date,setDate]=useState(new Date(2025,2,25));
- const [time,setTime]=useState('10:00');
- const [client,setClient]=useState(''); const [service,setService]=useState(''); const [description,setDescription]=useState('');
- const [worker,setWorker]=useState('Marko Ilić'); const [priority,setPriority]=useState('Standardno');
- const submit=e=>{e.preventDefault();onCreate({client,service:service||description,date:formatEUDate(date),time,worker,priority,status:'Zakazano',city:'',amount:'—'});close()};
- return <div className="modal-backdrop" onMouseDown={close}><div className="modal" onMouseDown={e=>e.stopPropagation()}><div className="modal-head"><div><h2>Novi posao</h2><p>Unesite osnovne podatke o intervenciji.</p></div><button className="icon-btn" onClick={close}><X/></button></div><form onSubmit={submit}><div className="form-grid"><label>Klijent<select required value={client} onChange={e=>setClient(e.target.value)}><option value="" disabled>Odaberite klijenta</option>{clients.map(c=><option key={c.id}>{c.name}</option>)}</select></label><label>Vrsta usluge<select value={service} onChange={e=>setService(e.target.value)}><option value="">Odaberite vrstu</option><option>Servis i popravka</option><option>Montaža</option><option>Održavanje</option></select></label><label className="full">Opis posla<textarea value={description} onChange={e=>setDescription(e.target.value)} required placeholder="Kratko opišite zahtjev klijenta..."></textarea></label><EUDateTimeFields date={date} setDate={setDate} time={time} setTime={setTime}/><label>Dodijeli radnika<select value={worker} onChange={e=>setWorker(e.target.value)}><option>Marko Ilić</option><option>Ivan Kovač</option><option>Petar Jurić</option></select></label><label>Prioritet<select value={priority} onChange={e=>setPriority(e.target.value)}><option>Standardno</option><option>Hitno</option></select></label></div><div className="modal-actions"><button type="button" className="secondary" onClick={close}>Odustani</button><button className="primary"><Check/> Sačuvaj posao</button></div></form></div></div>}
+
 
 function NotificationCenter({items,setItems,close,go,onRead,onReadAll,onDelete,loading,error,role}){
  const [filter,setFilter]=useState('Sve'); const ref=useRef(null); useClickOutside(ref,close);
@@ -520,7 +514,8 @@ function ProfileModal({close,onSaved,profile,setProfile}){
 }
 
 function AppShell(){
- const {clients,jobs:liveJobs,addClient,addJob,addOffer,addInvoice,addStock,loading,backendOnline}=useData();
+ const {clients,jobs:liveJobs,addClient,addJob,addOffer,addInvoice,addStock,createJob,loading,backendOnline}=useData();
+ const [companyTimezone,setCompanyTimezone]=useState('Europe/Paris');
  const initialRoute=useRef(parseAppLocation());
  const [authed,setAuthed]=useState(false);
  const [authLoading,setAuthLoading]=useState(true);
@@ -533,6 +528,8 @@ function AppShell(){
  const [brand,setBrand]=useState(null);
  const applyBrand=b=>{if(!b)return;setBrand(b);document.documentElement.style.setProperty('--blue',b.primary_color||'#1769d2');document.title=b.app_name||'TeloPak Flux';if(b.favicon_data){let link=document.querySelector("link[rel='icon']");if(!link){link=document.createElement('link');link.rel='icon';document.head.appendChild(link)}link.href=b.favicon_data}};
  useEffect(()=>{fetch('/api/public/settings').then(r=>r.json()).then(applyBrand).catch(()=>{})},[]);
+ useEffect(()=>{if(!authed)return;fetch('/api/settings/workspace',{credentials:'include'}).then(r=>r.json()).then(d=>setCompanyTimezone(d.timezone||'Europe/Paris')).catch(()=>{})},[authed]);
+ const companyTodayEU=()=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:companyTimezone,day:'2-digit',month:'2-digit',year:'numeric'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return `${parts.day}.${parts.month}.${parts.year}.`};
  useEffect(()=>{fetch('/api/auth/me',{credentials:'include'}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{setProfile(p=>({...p,...d.user}));setAuthed(true)}).catch(()=>setAuthed(false)).finally(()=>setAuthLoading(false))},[]);
  const loadNotifications=async(silent=false)=>{if(!authed)return;if(!silent)setNotificationsLoading(true);try{const r=await fetch('/api/notifications',{credentials:'include'}),d=await r.json();if(!r.ok)throw new Error(d.error||'Obavijesti nije moguće učitati.');setNotifications(Array.isArray(d)?d:[]);setNotificationsError('')}catch(e){setNotificationsError(e.message)}finally{setNotificationsLoading(false)}};
  useEffect(()=>{if(!authed)return;loadNotifications();const timer=setInterval(()=>loadNotifications(true),60000);return()=>clearInterval(timer)},[authed]);
@@ -602,7 +599,7 @@ function AppShell(){
    <div className="header-pop-wrap"><button className={`bell ${navPopup==='notifications'?'active':''}`} onClick={()=>{const next=navPopup==='notifications'?null:'notifications';setNavPopup(next);if(next)loadNotifications()}}><Bell/>{notifications.some(n=>!n.read)&&<i></i>}</button>{navPopup==='notifications'&&<NotificationCenter items={notifications} setItems={setNotifications} close={()=>setNavPopup(null)} go={go} onRead={readNotification} onReadAll={readAllNotifications} onDelete={deleteNotification} loading={notificationsLoading} error={notificationsError} role={profile?.role}/>}</div>
    <div className="header-pop-wrap"><button className={`profile-trigger ${navPopup==='profile'?'active':''}`} onClick={()=>setNavPopup(navPopup==='profile'?null:'profile')}><Avatar profile={profile} className="avatar header-avatar"/><ChevronDown/></button>{navPopup==='profile'&&<ProfileMenu close={()=>setNavPopup(null)} onProfile={()=>setProfileModal(true)} onLogout={logout} profile={profile}/>}</div>
   </div></header>{!loading&&!backendOnline&&<div className="demo-mode-banner"><AlertTriangle/> Demo režim: nije moguće povezati se na bazu, pa se izmjene ne čuvaju trajno. Na produkcijskom serveru sve radi sa pravom bazom podataka.</div>}<div className="content"><ErrorBoundary key={page}>{content}</ErrorBoundary></div></main>
-  {modal&&<Modal close={()=>setModal(false)} clients={clients} onCreate={job=>{addJob(job);notify('Novi posao je kreiran i dodan u raspored.');}}/>} {quickCreate&&<QuickCreateModal type={quickCreate} close={()=>setQuickCreate(null)} onSave={quickSaved} clients={clients}/>} {profileModal&&<ProfileModal close={()=>setProfileModal(false)} onSaved={notify} profile={profile} setProfile={setProfile}/>} {searchOpen&&<GlobalSearch close={()=>setSearchOpen(false)} go={go} role={profile?.role}/>} {notice&&<div className="toast"><CheckCircle2/><div><strong>Uspješno</strong><span>{notice}</span></div><button onClick={()=>setNotice('')}><X/></button></div>}
+  {modal&&<JobForm data={{status:'Novi',priority:'Standardno',date:companyTodayEU(),time:'08:00',worker:''}} close={()=>setModal(false)} save={async f=>{const saved=await createJob(f);setModal(false);notify(`Posao ${saved.no||`#${saved.id}`} je sačuvan.`);return saved}}/>} {quickCreate&&<QuickCreateModal type={quickCreate} close={()=>setQuickCreate(null)} onSave={quickSaved} clients={clients}/>} {profileModal&&<ProfileModal close={()=>setProfileModal(false)} onSaved={notify} profile={profile} setProfile={setProfile}/>} {searchOpen&&<GlobalSearch close={()=>setSearchOpen(false)} go={go} role={profile?.role}/>} {notice&&<div className="toast"><CheckCircle2/><div><strong>Uspješno</strong><span>{notice}</span></div><button onClick={()=>setNotice('')}><X/></button></div>}
  </div>
 }
 
