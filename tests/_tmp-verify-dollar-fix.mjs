@@ -1,0 +1,1 @@
+import fs from'node:fs';import assert from'node:assert/strict';const s=fs.readFileSync('server/index.js','utf8');assert(s.includes("cols.map((c, i) => `${c}=$${i + 1}`).join(',')"),'$ fix missing');assert(!s.includes("cols.map((c, i) => `${c}=${i + 1}`).join(',')"),'old buggy pattern still present');console.log('dollar fix verified');
