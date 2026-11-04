@@ -3,9 +3,9 @@ assert(ui.includes("'Korisnici':<UsersManagement role={profile?.role}"),'Modul m
 assert(ui.includes("officeOnly?'Radnici na terenu':'Korisnici i pristup'"),'Kancelarija mora vidjeti naslov Radnici na terenu');
 assert(ui.includes("officeOnly?'Novi radnik':'Novi korisnik'"),'Kancelarija mora vidjeti Novi radnik');
 assert(ui.includes("const visibleUsers=officeOnly?users.filter(u=>u.role==='Radnik na terenu'):users;"),'Brojači, lista i pretraga Kancelarije moraju obuhvatiti samo radnike');
-assert(ui.includes('disabled={officeOnly}')&&ui.includes('<option>Radnik na terenu</option>'),'Uloga novog radnika mora biti zaključana');
-assert(ui.includes('{!officeOnly&&<><button className="action-text-btn"'),'Administrativne akcije moraju biti skrivene Kancelariji');
-assert(server.includes("if(req.user.role==='Kancelarija'&&req.body?.role!=='Radnik na terenu')return res.status(403)"),'Server mora odbiti višu ulogu');
+assert(ui.includes('className="fixed-role-value">Radnik na terenu</strong>'),'Uloga novog radnika mora biti prikazana kao fiksni tekst');
+assert(ui.includes("officeOnly?<button className=\"action-text-btn\" onClick={()=>openAction(u,'detail')}"),'Kancelariji u tabeli mora ostati samo akcija Pregled');
+assert(server.includes("if(req.user.role==='Kancelarija'&&req.body?.role!==undefined&&req.body.role!=='Radnik na terenu')return res.status(403)"),'Server mora odbiti višu ulogu');
 assert(server.includes("if(req.body?.company_id!==undefined&&Number(req.body.company_id)!==Number(req.user.company_id))return res.status(403)"),'Server mora odbiti tuđu firmu');
 assert(server.includes("AND ($2::boolean=false OR role='Radnik na terenu')"),'Server Kancelariji mora vratiti samo radnike');
 assert(server.includes("app.post('/api/team', requireAuth, requireTeamCreator, strictLimiter"),'Kancelarija mora moći kreirati dozvoljenog radnika');
