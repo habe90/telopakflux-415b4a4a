@@ -1,0 +1,14 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),store=fs.readFileSync('src/store.jsx','utf8');
+assert(server.includes("const set = cols.map((c, i) => c + '=' + String.fromCharCode(36) + (i + 1)).join(',');"),'Generički PUT mora koristiti PostgreSQL $ placeholdere');
+assert(server.includes('WHERE id=${idPlaceholder} AND company_id=${companyPlaceholder} RETURNING *'),'PUT mora ažurirati samo isti ID unutar firme prijavljenog korisnika');
+assert(store.includes("request(`clients${id?`/${id}`:''}`,{method:id?'PUT':'POST'"),'Postojeći klijent mora koristiti PUT, ne POST');
+assert(store.includes("delete clean.id;delete clean.created_at;delete clean.company_id"),'Payload ne smije mijenjati ID ni company_id');
+assert(ui.includes('<form onSubmit={submit}>'),'Dugme mora biti povezano s obrascem');
+assert(ui.includes('<button type="submit" className="primary" disabled={busy}>'),'Dugme mora eksplicitno biti submit i blokirati dupli klik');
+assert(ui.includes("if(!String(f.name||'').trim())next.name="),'Validacija mora dati razlog uz polje imena');
+assert(ui.includes("if(f.email&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test"),'Validacija mora dati razlog uz e-mail polje');
+assert(ui.includes("catch(err){setSubmitError(err.message||'Klijent nije sačuvan. Unesene izmjene su zadržane; pokušajte ponovo.')"),'Greška mora ostaviti obrazac i izmjene otvorene');
+assert(ui.includes("setNotice(editing?'Izmjene su sačuvane.'"),'Uspjeh mora prikazati traženu poruku');
+assert(ui.includes("editing&&String(saved.id)!==String(data.id)"),'Frontend mora provjeriti da je server vratio isti ID');
+console.log('Client edit/save tests passed');
