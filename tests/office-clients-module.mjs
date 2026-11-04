@@ -10,6 +10,6 @@ assert(store.includes('const saveClient=async')&&ui.includes('await saveClient(d
 assert(ui.includes('Dodatne servisne lokacije')&&ui.includes('Dodaj lokaciju'),'Uređivanje klijenta mora podržati više lokacija');
 assert(ui.includes('<h4>Povezani poslovi</h4>')&&ui.includes('<h4>Povezane ponude</h4>')&&ui.includes('<h4>Povezani računi</h4>'),'Read-only kartica mora prikazati povezane zapise');
 assert(app.includes("filter:'create-client',data")&&ui.includes("openIntent.filter==='create-client'"),'Novi posao mora otvoriti postojeći obrazac s unaprijed odabranim klijentom');
-assert(ui.includes('f.client_locations.length>1?<Select')&&ui.includes('Odaberite servisnu lokaciju'),'Više lokacija mora ponuditi izbor u obrascu posla');
+assert(ui.includes('savedLocations.length>0&&<Select')&&ui.includes('Druga adresa — samo za ovaj posao'),'Servisne lokacije moraju ponuditi izbor i ručni unos adrese samo za posao');
 assert(css.includes('.clients-table .jobs-col,.clients-table .money-col,.clients-table .phase-col,.clients-table .actions-col{text-align:center!important'),'Posljednje četiri kolone moraju biti centrirane');
 console.log('Office clients module tests passed');
