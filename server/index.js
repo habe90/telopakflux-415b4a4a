@@ -303,7 +303,9 @@ app.post('/api/auth/sessions/revoke-others', requireAuth, async (req, res) => { 
 app.put('/api/auth/profile', requireAuth, async (req, res) => {
   try {
     const workerOnly=req.user.role==='Radnik na terenu';
+    const officeRole=req.user.role==='Kancelarija';
     const normalizePhone=v=>String(v||'').replace(/[^0-9+]/g,'').replace(/^00/,'+');
+    if(officeRole&&req.body?.name!==undefined)return res.status(403).json({error:'Kancelarija ne može promijeniti ime i prezime. Za ispravku kontaktirajte administratora.'});
     if(workerOnly){
       const keys=Object.keys(req.body||{});
       if(keys.some(k=>k!=='phone'))return res.status(403).json({error:'Radnik može izmijeniti samo broj telefona.'});
