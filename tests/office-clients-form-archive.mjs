@@ -4,7 +4,7 @@ const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('serve
 // 1) Obrazac klijenta prilagođen vrsti lica
 assert(ui.includes("const isCompany=f.type==='Pravno lice'"),'Obrazac mora razlikovati fizičko/pravno lice');
 assert(ui.includes('<Field label="Naziv firme">'),'Pravno lice mora imati Naziv firme');
-assert(ui.includes('<Field label="Ime i prezime" full>'),'Fizičko lice mora imati Ime i prezime umjesto Naziv/Kontakt osoba');
+assert(ui.includes('<Field label="Ime i prezime" full hint={errors.name}>'),'Fizičko lice mora imati Ime i prezime umjesto Naziv/Kontakt osoba');
 assert(ui.includes("if(!isCompany)payload.contact=''"),'Fizičko lice ne smije ponovo tražiti isto ime kao kontakt osobu');
 assert(ui.includes('PHONE_EXAMPLE_BY_COUNTRY'),'Primjer telefona mora zavisiti od odabrane države');
 assert(ui.includes('ali može se unijeti i drugi važeći međunarodni broj'),'Mora dozvoliti drugi validan međunarodni broj');
