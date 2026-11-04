@@ -166,6 +166,10 @@ async function run() {
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_invoice_payments_company_date ON invoice_payments(company_id,paid_at DESC)`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS sent_at timestamptz`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS create_key text`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_offers_company_create_key ON offers(company_id,create_key) WHERE create_key IS NOT NULL`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS create_key text`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_company_create_key ON invoices(company_id,create_key) WHERE create_key IS NOT NULL`);
   await pool.query(`CREATE TABLE IF NOT EXISTS reminder_drafts (
     id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     created_by int REFERENCES app_users(id) ON DELETE SET NULL,
@@ -315,12 +319,19 @@ async function run() {
   await pool.query(`ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS timezone text NOT NULL DEFAULT 'Europe/Paris'`);
   await pool.query(`CREATE TABLE IF NOT EXISTS material_requests (
     id serial PRIMARY KEY, company_id integer NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    stock_id integer NOT NULL REFERENCES stock(id) ON DELETE RESTRICT, quantity numeric(14,3) NOT NULL CHECK (quantity > 0),
+    stock_id integer REFERENCES stock(id) ON DELETE RESTRICT, quantity numeric(14,3) NOT NULL CHECK (quantity > 0),
+    requested_name text NOT NULL DEFAULT '', requested_unit text NOT NULL DEFAULT '',
     job_id integer REFERENCES jobs(id) ON DELETE SET NULL, job_label text NOT NULL DEFAULT '', note text NOT NULL DEFAULT '',
     status text NOT NULL DEFAULT 'Otvoren' CHECK (status IN ('Otvoren','Primljen','Otkazan')),
     requested_by integer REFERENCES app_users(id) ON DELETE SET NULL, received_by integer REFERENCES app_users(id) ON DELETE SET NULL,
     received_quantity numeric(14,3), created_at timestamptz NOT NULL DEFAULT now(), received_at timestamptz
   )`);
+  await pool.query(`ALTER TABLE material_requests ALTER COLUMN stock_id DROP NOT NULL`);
+  await pool.query(`ALTER TABLE material_requests ADD COLUMN IF NOT EXISTS requested_name text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE material_requests ADD COLUMN IF NOT EXISTS requested_unit text NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS current_job_id integer REFERENCES jobs(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS last_service timestamptz`);
+  await pool.query(`ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS completed_at timestamptz`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_material_requests_company_status ON material_requests(company_id,status)`);
   await pool.end();
 }
