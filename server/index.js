@@ -103,7 +103,7 @@ function crud(table, defaults = {}) {
       const cols = Object.keys(data);
       if (!cols.length) return res.status(400).json({ error: 'Nema polja za izmjenu.' });
       const previousRow=table==='jobs'?(await pool.query('SELECT * FROM jobs WHERE id=$1 AND company_id=$2',[req.params.id,req.user.company_id])).rows[0]:null;
-      const set = cols.map((c, i) => `${c}=${i + 1}`).join(',');
+      const set = cols.map((c, i) => c + '=' + String.fromCharCode(36) + (i + 1)).join(',');
       const idPlaceholder = '$' + (cols.length + 1);
       const companyPlaceholder = '$' + (cols.length + 2);
       const r = await pool.query(
