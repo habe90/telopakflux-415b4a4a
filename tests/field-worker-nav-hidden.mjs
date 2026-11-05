@@ -5,5 +5,5 @@ assert(app.includes('function navItemsForRole(role){const hidden=hiddenPagesForR
 assert(app.includes('hiddenPagesForRole(profile?.role).includes(page)'),'Direktan pokušaj otvaranja skrivene stranice mora preusmjeriti bilo koju ograničenu ulogu');
 assert(app.includes("{profile?.role!=='Radnik na terenu'&&<button className={page==='Korisnici'?'active':''} onClick={()=>go('Korisnici')}>"),'Dugme Korisnici mora biti skriveno radniku na terenu');
 assert(app.includes("role!=='Kancelarija'&&role!=='Radnik na terenu'&&<div className=\"nav-pop-foot\">"),'Centar obavijesti ne smije voditi radnika na terenu ka AI pomoćniku');
-assert(app.includes("profile?.role!=='Radnik na terenu'&&<button className=\"text-button\" onClick={()=>go('AI pomoćnik')}>"),'Dugme Prikaži sve obaveze mora biti skriveno radniku na terenu');
+assert(app.includes("profile?.role!=='Radnik na terenu'&&<button className=\"text-button\" onClick={()=>setAllTasksOpen(true)}>"),'Dugme Prikaži sve obaveze mora biti skriveno radniku na terenu i otvoriti lokalni panel');
 console.log('Field worker nav hidden tests passed');
