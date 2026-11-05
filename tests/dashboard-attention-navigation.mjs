@@ -1,0 +1,17 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const app=fs.readFileSync('src/App.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8'),server=fs.readFileSync('server/index.js','utf8');
+const start=app.indexOf('function Dashboard({openNew,go,profile})'),end=app.indexOf('\nfunction OfficeDashboard',start),dash=app.slice(start,end);
+assert(dash.includes('[allTasksOpen,setAllTasksOpen]=useState(false)'),'Dashboard mora imati lokalno stanje bočnog panela');
+assert(dash.includes("const openAlert=a=>{setAllTasksOpen(false);go(a.page,{id:a.id})}"),'Kartica i panel moraju koristiti isti page+ID handler');
+assert(dash.includes("onClick={()=>setAllTasksOpen(true)}>Prikaži sve obaveze"),'Prikaži sve obaveze mora otvoriti panel');
+assert(!dash.includes("onClick={()=>go('AI pomoćnik')}>Prikaži sve obaveze"),'Prikaži sve obaveze ne smije otvoriti AI pomoćnik');
+assert(dash.includes('aria-label="Sve obaveze"')&&dash.includes('aria-label="Zatvori sve obaveze"'),'Panel mora imati naslov i dugme za zatvaranje');
+assert((dash.match(/onClick=\{\(\)=>openAlert\(a\)\}/g)||[]).length===2,'I kartica i panel moraju samostalno otvarati stavku');
+assert(dash.includes("onAction={()=>go('Računi')}"),'Svi računi mora otvoriti modul Računi');
+assert(dash.includes("onAction={()=>go('Raspored',{params:{view:'week'}})}"),'Otvori raspored mora otvoriti sedmični raspored');
+assert(dash.includes("go('Raspored',{id:j.id,params:{view:'week'}})"),'Pojedinačni posao mora otvoriti stvarni ID');
+assert(dash.includes("go('Računi',{id:r.id})"),'Računi moraju otvarati stvarni ID');
+assert(server.includes("type:'invoice',id:i.id")&&server.includes("type:'offer',id:o.id")&&server.includes("type:'maintenance',id:m.id"),'Server mora vratiti vrstu i stvarni ID svake obaveze');
+assert(dash.includes('cards.waiting_offers||0')&&dash.includes('cards.overdue_amount'),'Naglašene vrijednosti moraju doći iz podataka');
+assert(css.includes('.dashboard-offers-attention')&&css.includes('.dashboard-overdue-attention'),'Naglašene vrijednosti moraju imati tražene stilove');
+console.log('Dashboard attention navigation tests passed');
