@@ -1,22 +1,13 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';
-const app=fs.readFileSync('src/App.jsx','utf8'),demo=fs.readFileSync('src/dashboardDemo.js','utf8'),css=fs.readFileSync('src/styles.css','utf8');
-assert(app.includes('const DASHBOARD_DEMO_MODE=true'),'Demo početna mora imati jedan prekidač');
-assert(app.includes('buildDemoDashboard(period)'),'Demo podaci moraju biti odvojeni od stvarnih');
-for(const v of ['month_paid:18420','active_jobs:24','open_offers:8'])assert(demo.includes(v),`Nedostaje demo vrijednost ${v}`);
-assert(demo.includes('invoiceRows.reduce((s,x)=>s+x.remaining,0)'),'Demo nenaplaćeno mora biti zbir dugova računa');
-assert((demo.match(/client:/g)||[]).length>=4,'Demo raspored mora imati četiri klijenta');
-assert(demo.includes("priority:'Hitno'")&&demo.includes("status:'Zakazano'"),'Hitni termin mora imati odvojen status i prioritet');
-assert(demo.includes('alerts:[')&&demo.includes('latest_invoices:invoiceRows'),'Upozorenja i računi moraju imati demo skupove');
-assert(demo.includes('Array.from({length:days}'),'Grafikon mora generisati 7 ili 30 dana');
-assert(app.includes('demo-data-badge')&&app.includes('Demo podaci'),'Zaglavlje mora označiti demo podatke');
-assert(app.includes("!DASHBOARD_DEMO_MODE&&go"),'Demo zapisi ne smiju otvarati stvarne zapise');
+const app=fs.readFileSync('src/App.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+// Administratorska Početna sada koristi stvarne podatke (vidi tests/dashboard-admin-overview.mjs i tests/dashboard-real-data.mjs
+// za provjeru da DASHBOARD_DEMO_MODE=false i da je demo zastavica uklonjena iz navigacije). Ovdje ostaju samo i dalje važeće
+// provjere rasporeda, formatiranja i izgleda koje ne zavise od demo/stvarnog režima.
 assert(app.includes("const companyTZ='Europe/Paris'")&&app.includes("10:'okt.'")&&app.includes('dateLabel=`${Number(companyParts.day)}. ${monthShort}`'),'Datum zaglavlja mora koristiti francusko vrijeme i bosansku skraćenicu mjeseca');
 assert(app.includes('setInterval(()=>setDateTick(Date.now()),60000)'),'Datum se mora automatski osvježavati nakon promjene dana');
 assert(app.includes('formatDashboardDate(r.issued)')&&app.includes("return`${iso[3]}.${iso[2]}.${iso[1]}`"),'Datum računa mora se formatirati samo pri prikazu, bez završne tačke');
 assert(app.includes('dashboard-schedule-head')&&app.includes('dashboard-schedule-row')&&css.includes('--schedule-cols:64px'),'Zaglavlje i redovi rasporeda moraju koristiti iste kolone');
-assert(demo.includes("city:'Boulogne-Billancourt'"),'Demo mora provjeriti dugu lokaciju');
 assert(app.includes('chart-y-axis')&&app.includes('data-tooltip'),'Grafikon mora imati EUR skalu i tooltip');
 assert(css.includes('overflow:visible!important'),'Grafikon ne smije imati unutrašnji vertikalni scroll');
-assert(demo.includes('R-${year}-1045')&&demo.includes('P-${year}-0217'),'Brojevi dokumenata moraju pratiti tekuću godinu');
 const gridStart=app.indexOf('className="dashboard-grid"',app.indexOf('function Dashboard({openNew,go,profile})')),scheduleIdx=app.indexOf('schedule-card',gridStart),invoicesIdx=app.indexOf('className="card invoices"',gridStart),activityIdx=app.indexOf('activity-card',gridStart),tasksIdx=app.indexOf('tasks-card',gridStart);assert(scheduleIdx<invoicesIdx&&invoicesIdx<activityIdx&&activityIdx<tasksIdx,'Raspored i računi moraju biti lijevo, grafikon i upozorenja desno');
-console.log('Dashboard demo tests passed');
+console.log('Dashboard layout tests passed');
