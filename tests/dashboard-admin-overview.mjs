@@ -10,7 +10,7 @@ assert(app.includes("fetch(`/api/dashboard/home?days=${period}`"),'Dashboard mor
 
 // 3) Broj računa i cijeli red u "Posljednji računi" moraju otvarati detalje TAČNO tog računa po stvarnom ID-u.
 // (Traži se unutar funkcije Dashboard — LegacyDashboard ranije u fajlu ima istoimenu, ali neaktivnu karticu.)
-const dashboardStartForInvoices=app.indexOf('function Dashboard({openNew,go,profile})');
+const dashboardStartForInvoices=app.indexOf('function Dashboard({openNew,go,profile,refreshKey})');
 const invoicesSectionStart=app.indexOf('CardHead title="Posljednji računi"',dashboardStartForInvoices);
 const invoicesSection=app.slice(invoicesSectionStart,invoicesSectionStart+1600);
 assert(invoicesSection.includes('className="clickable-row" tabIndex={0} role="button"'),'Red mora biti fokusibilan i semantički dugme');
@@ -28,7 +28,7 @@ assert(css.includes('.invoice-no-link{border:0;background:transparent'),'Broj ra
 
 // 5) Ostala navigacija na istoj Početnoj (kartice, raspored, upozorenja) i dalje mora pozivati go(...) sa stvarnim ID-jevima.
 // DASHBOARD_DEMO_MODE je sada false, pa čak i preostali "!DASHBOARD_DEMO_MODE&&go(...)" izrazi funkcionalno uvijek pozivaju go(...).
-const dashboardFnStart=app.indexOf('function Dashboard({openNew,go,profile})'),dashboardFnEnd=app.indexOf('\nfunction OfficeDashboard',dashboardFnStart);
+const dashboardFnStart=app.indexOf('function Dashboard({openNew,go,profile,refreshKey})'),dashboardFnEnd=app.indexOf('\nfunction OfficeDashboard',dashboardFnStart);
 const dashboardFn=app.slice(dashboardFnStart,dashboardFnEnd);
 assert(dashboardFn.includes("go('Raspored',{id:j.id,params:{view:'week'}})"),'Red današnjeg rasporeda mora otvarati stvarni posao po ID-u');
 assert(dashboardFn.includes("go(a.page,{id:a.id})"),'Stavka Zahtijeva pažnju mora otvarati stvarni zapis po ID-u');
