@@ -9,5 +9,5 @@ assert(server.includes('Math.max(legacyPaid,ledgerPaid)'),'Dug mora uključiti d
 assert(app.includes('Naplaćeno po danima')&&app.includes('setPeriod(30)'),'Grafikon mora podržati stvarnih 7 i 30 dana');
 assert(server.includes('todayJobs.rows')&&server.includes('timeZone:tz'),'Današnji raspored mora koristiti vremensku zonu firme');
 assert(app.includes('Do pet posljednjih izdatih računa'),'Posljednji računi moraju biti stvarni i ograničeni');
-assert(app.includes('function Dashboard({openNew,go,profile})')&&app.includes('cards.month_paid'),'Aktivni dashboard ne smije koristiti statičke vrijednosti');
+assert(app.includes('function Dashboard({openNew,go,profile,refreshKey})')&&app.includes('cards.month_paid'),'Aktivni dashboard ne smije koristiti statičke vrijednosti');
 console.log('Dashboard real data tests passed');
