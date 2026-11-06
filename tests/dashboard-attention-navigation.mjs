@@ -2,7 +2,7 @@ import fs from 'node:fs';import assert from 'node:assert/strict';
 const app=fs.readFileSync('src/App.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8'),server=fs.readFileSync('server/index.js','utf8');
 const start=app.indexOf('function Dashboard({openNew,go,profile,refreshKey})'),end=app.indexOf('\nfunction OfficeDashboard',start),dash=app.slice(start,end);
 assert(dash.includes('[allTasksOpen,setAllTasksOpen]=useState(false)'),'Dashboard mora imati lokalno stanje bočnog panela');
-assert(dash.includes("const openAlert=a=>{setAllTasksOpen(false);go(a.page,{id:a.id})}"),'Kartica i panel moraju koristiti isti page+ID handler');
+assert(dash.includes("const openAlert=a=>{if(DASHBOARD_DEMO_MODE)return;setAllTasksOpen(false);go(a.page,{id:a.id})}"),'Kartica i panel moraju koristiti isti page+ID handler, zaštićen od demo zapisa');
 assert(dash.includes("onClick={()=>setAllTasksOpen(true)}>Prikaži sve obaveze"),'Prikaži sve obaveze mora otvoriti panel');
 assert(!dash.includes("onClick={()=>go('AI pomoćnik')}>Prikaži sve obaveze"),'Prikaži sve obaveze ne smije otvoriti AI pomoćnik');
 assert(dash.includes('aria-label="Sve obaveze"')&&dash.includes('aria-label="Zatvori sve obaveze"'),'Panel mora imati naslov i dugme za zatvaranje');
