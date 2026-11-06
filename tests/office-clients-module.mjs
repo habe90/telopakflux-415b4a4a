@@ -3,8 +3,8 @@ const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('serve
 assert(ui.includes('label="Ukupno klijenata"')&&ui.includes('label="Novi klijenti ovog mjeseca"')&&ui.includes('label="Klijenti s otvorenim poslovima"'),'Klijenti moraju imati tri tražene kartice');
 assert(ui.includes('const openClientNames=new Set('),'Klijenta s više otvorenih poslova treba brojiti jednom');
 assert(ui.includes('placeholder="Ime, firma, telefon, e-mail ili grad..."'),'Pretraga mora pokrivati tražena polja');
-assert(ui.includes("role==='Kancelarija'||hasHistory||x.archived?null"),'Kancelarija ne smije vidjeti akciju trajnog brisanja');
-assert(server.includes("table === 'clients' && req.user.role === 'Kancelarija'")&&server.includes('Kancelarija ne može trajno brisati klijente.'),'Server mora zabraniti trajno brisanje klijenta kancelariji');
+assert(ui.includes("role==='Administrator'&&(deleteBlocked?"),'Kancelarija ne smije vidjeti akciju trajnog brisanja');
+assert(server.includes("if(req.user.role!=='Administrator')return res.status(403).json({error:'Samo administrator može trajno obrisati klijenta.'})"),'Server mora dozvoliti trajno brisanje klijenta isključivo administratoru');
 assert(server.includes("app.get('/api/clients/:id/card'")&&server.includes('WHERE id=$1 AND company_id=$2'),'Kartica i direktni link moraju biti ograničeni na firmu prijavljenog korisnika');
 assert(store.includes('const saveClient=async')&&ui.includes('await saveClient(data,data.id||null)'),'Kancelarija i administrator moraju koristiti isti trajni imenik clients');
 assert(ui.includes('Dodatne servisne lokacije')&&ui.includes('Dodaj lokaciju'),'Uređivanje klijenta mora podržati više lokacija');
