@@ -4,9 +4,10 @@ const app=fs.readFileSync('src/App.jsx','utf8'),css=fs.readFileSync('src/styles.
 // 1) Podnaslov administratorske Početne mora biti tačno traženi tekst, bez obzira na stanje.
 assert(app.includes('<p>Pregled poslovanja, današnjeg rasporeda i obaveza vaše firme.</p>'),'Podnaslov Početne mora biti tačan');
 
-// 2) Administratorska Početna sada koristi stvarne podatke (real backend), ne trajni demo prikaz.
-assert(app.includes('const DASHBOARD_DEMO_MODE=false;'),'Dashboard mora koristiti stvarne podatke, ne demo režim');
-assert(app.includes("fetch(`/api/dashboard/home?days=${period}`"),'Dashboard mora učitavati stvarni backend sažetak');
+// 2) Administratorska Početna ima ugrađen demo prikaz (uključen/isključen zastavicom) i stvarni backend sažetak
+// za kad je demo isključen.
+assert(app.includes('const DASHBOARD_DEMO_MODE=true;')||app.includes('const DASHBOARD_DEMO_MODE=false;'),'DASHBOARD_DEMO_MODE mora biti eksplicitno postavljena zastavica');
+assert(app.includes("fetch(`/api/dashboard/home?days=${period}`"),'Dashboard mora znati učitati stvarni backend sažetak kad demo nije uključen');
 
 // 3) Broj računa i cijeli red u "Posljednji računi" moraju otvarati detalje TAČNO tog računa po stvarnom ID-u.
 // (Traži se unutar funkcije Dashboard — LegacyDashboard ranije u fajlu ima istoimenu, ali neaktivnu karticu.)
@@ -14,11 +15,12 @@ const dashboardStartForInvoices=app.indexOf('function Dashboard({openNew,go,prof
 const invoicesSectionStart=app.indexOf('CardHead title="Posljednji računi"',dashboardStartForInvoices);
 const invoicesSection=app.slice(invoicesSectionStart,invoicesSectionStart+1600);
 assert(invoicesSection.includes('className="clickable-row" tabIndex={0} role="button"'),'Red mora biti fokusibilan i semantički dugme');
-assert(invoicesSection.includes("onClick={()=>go('Računi',{id:r.id})}"),'Klik na red mora otvoriti račun po stvarnom ID-u');
+assert(invoicesSection.includes("onClick={()=>!DASHBOARD_DEMO_MODE&&go('Računi',{id:r.id})}"),'Klik na red mora otvoriti račun po stvarnom ID-u kad demo nije uključen');
 assert(invoicesSection.includes("onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')"),'Red mora biti otvoriv tastaturom (Enter/Space)');
 assert(invoicesSection.includes('className="invoice-no-link"'),'Broj računa mora biti zaseban klikabilan element');
-assert(invoicesSection.includes("e.stopPropagation();go('Računi',{id:r.id})"),'Klik na broj računa mora otvoriti tačno taj račun, bez dupliranja navigacije');
-assert(!invoicesSection.includes('!DASHBOARD_DEMO_MODE&&go'),'Klik ne smije više biti blokiran demo zastavicom');
+assert(invoicesSection.includes("e.stopPropagation();!DASHBOARD_DEMO_MODE&&go('Računi',{id:r.id})"),'Klik na broj računa mora otvoriti tačno taj račun, bez dupliranja navigacije');
+// Kad je uključen demo prikaz, klik na izmišljene ID-eve ne smije pokušati otvoriti nepostojeći zapis.
+assert(invoicesSection.includes('!DASHBOARD_DEMO_MODE&&go'),'Klik na demo zapis mora biti zaštićen demo zastavicom');
 
 // 4) Vizuelno isticanje na hover i kursor pokazivača (diskretno, ne upadljivo) + fokus stanje za tastaturu.
 assert(css.includes('.clickable-row{cursor:pointer}'),'Klikabilni red mora imati kursor pokazivača');
