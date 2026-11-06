@@ -1,0 +1,18 @@
+import fs from'node:fs';import assert from'node:assert/strict';
+const ui=fs.readFileSync('src/Modules.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(server.includes("if(req.user.role!=='Administrator')return res.status(403).json({error:'Samo administrator može trajno obrisati klijenta.'})"),'DELETE mora biti samo za Administratora');
+assert(server.includes("SELECT id,name FROM clients WHERE id=$1 AND company_id=$2"),'Klijent mora pripadati firmi administratora');
+for(const table of ['jobs','offers','maintenance'])assert(server.includes(`FROM ${table} WHERE company_id=$1 AND lower(client)=lower($2)`),`Brisanje mora provjeriti ${table}`);
+assert(server.includes('COUNT(DISTINCT i.id)::int invoices,COUNT(p.id)::int payments'),'Brisanje mora provjeriti račune i uplate');
+assert(server.includes("if(Object.values(counts).some(Number))return res.status(409)"),'Povezana historija mora blokirati DELETE');
+assert(server.includes("DELETE FROM clients WHERE id=$1 AND company_id=$2 RETURNING id"),'DELETE mora biti tenant-scoped');
+assert(ui.includes("delete_blocked:server.delete_blocked||null"),'Frontend mora koristiti serverski rezultat svih veza');
+assert(ui.includes("role==='Administrator'&&(deleteBlocked?"),'Obriši mora biti prikazan samo Administratoru');
+assert(ui.includes('className="icon-btn sm delete-action blocked"'),'Blokirano Obriši mora ostati vidljivo i sivo');
+assert(ui.includes('<Trash2 className="delete-icon-default"/><Ban className="delete-icon-hover"/>'),'Hover mora zamijeniti kantu znakom zabrane');
+assert(ui.includes('className="icon-btn sm danger delete-action"'),'Dozvoljeno Obriši mora biti crveno i aktivno');
+assert(ui.includes('Obrisati klijenta {modal.data.name}?')&&ui.includes('<p>Ova radnja je trajna.</p>'),'Potvrda mora imati tačan tekst');
+assert(ui.includes('Obriši klijenta</button>'),'Potvrda mora imati dugme Obriši klijenta');
+assert(ui.includes("setModal(current=>({...current,error:e.message||'Klijent nije obrisan.'}))"),'Odbijanje servera mora zadržati modal i prikazati razlog');
+assert(css.includes('.row-actions .delete-action.blocked:hover')&&css.includes('cursor:not-allowed'),'Blokirani hover mora biti crven i not-allowed');
+console.log('Client administrator delete tests passed');
