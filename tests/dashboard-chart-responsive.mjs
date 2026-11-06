@@ -1,0 +1,15 @@
+import fs from'node:fs';import assert from'node:assert/strict';const app=fs.readFileSync('src/App.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(app.includes('function niceChartScale(value)'),'Skala mora koristiti nice korake');
+assert(app.includes("if(max===0)return{top:0,ticks:[0]}"),'Prazna skala mora imati samo 0,00 €');
+assert(app.includes('chartScale=niceChartScale(chartMax),hasChartPayments=chartMax>0'),'Skala i prazno stanje moraju dolaziti iz podataka');
+assert(app.includes("height:amount>0&&chartScale.top>0?`${amount/chartScale.top*100}%`:'0%'"),'Nulti dan mora imati visinu tačno nula');
+assert(!app.includes('Math.max(2,Number(x.amount)'),'Ne smije postojati minimalni plavi stubac');
+assert(app.includes('Nema evidentiranih uplata u odabranom periodu.'),'Prazan period mora imati jasnu poruku');
+assert(app.includes("period===7||index%5===0||index===chartData.length-1"),'7 dana prikazuje sve, 30 dana približno svaki peti i posljednji datum');
+assert(app.includes("style={{'--chart-days':chartData.length||period}}"),'Broj CSS kolona mora pratiti broj dnevnih podataka');
+assert(css.includes('grid-template-columns:repeat(var(--chart-days),minmax(0,1fr))'),'Svi dani moraju dijeliti dostupnu širinu');
+assert(css.includes('.activity-card{min-width:0;overflow:hidden}'),'Kartica mora biti sigurna unutar grid/flex rasporeda');
+assert(!css.includes('overflow-x:auto}.dashboard-payment-bars .bar-col{min-width:16px'),'Ne smije ostati stari horizontalni overflow/min-width uzrok');
+assert(css.includes('.dashboard-chart .bar-col .bar{width:min(24px,76%);max-width:100%;min-height:0'),'Stubac mora pratiti širinu ćelije i dozvoliti nultu visinu');
+assert(app.includes('data-tooltip={`${dateParts.full} · ${fmt(amount)}`}'),'Hover mora prikazati puni datum i tačan iznos');
+console.log('Dashboard responsive chart tests passed');
