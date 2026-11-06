@@ -17,7 +17,7 @@ assert(app.includes('const fmt=formatMoneyEU'),'Dashboard mora koristiti determi
 // 3) Datumi u obliku "05.11.2026." — sa završnom tačkom, i za račune i za stupce grafikona.
 assert(app.includes("function isoDateParts(isoDay){"),'Mora postojati pomoćna funkcija za ISO datum grafikona');
 assert(app.includes("full:Number.isFinite(y)?`${pad2(d)}.${pad2(m)}.${y}.`")," Puni datum stupca mora imati završnu tačku");
-assert(app.includes("dateParts.full} · ${fmt(x.amount)}"),'Tooltip stupca mora prikazati puni datum i iznos');
+assert(app.includes("dateParts.full} · ${fmt(amount)}"),'Tooltip stupca mora prikazati puni datum i iznos');
 
 // 4) Uklonjeni sitni iznosi nagomilani pri dnu stubaca — prikaz samo na hover (tooltip), ne stalni tekst na stupcu.
 assert(!app.includes('className="bar-value"'),'Stalni tekst iznosa na stupcu mora biti uklonjen');
