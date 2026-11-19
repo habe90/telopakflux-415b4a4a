@@ -166,6 +166,28 @@ async function run() {
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_invoice_payments_company_date ON invoice_payments(company_id,paid_at DESC)`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS sent_at timestamptz`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS discount_type text`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS discount_value numeric(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS discount_amount numeric(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS accepted_at timestamptz`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS signed_at timestamptz`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS signed_by int REFERENCES app_users(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS signed_attachment jsonb`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS document_snapshot jsonb`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS document_language text NOT NULL DEFAULT 'fr'`);
+  await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS version int NOT NULL DEFAULT 1`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS offer_versions (
+    id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    offer_id int NOT NULL REFERENCES offers(id) ON DELETE RESTRICT, version int NOT NULL,
+    snapshot jsonb NOT NULL, reason text NOT NULL DEFAULT '', created_by int REFERENCES app_users(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(offer_id,version)
+  )`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS offer_events (
+    id bigserial PRIMARY KEY, company_id int NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    offer_id int NOT NULL REFERENCES offers(id) ON DELETE RESTRICT, event_type text NOT NULL,
+    actor_user_id int REFERENCES app_users(id) ON DELETE SET NULL, metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(offer_id,event_type)
+  )`);
   await pool.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS create_key text`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_offers_company_create_key ON offers(company_id,create_key) WHERE create_key IS NOT NULL`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS create_key text`);
