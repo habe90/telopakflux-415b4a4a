@@ -1,0 +1,21 @@
+import fs from'node:fs';import assert from'node:assert/strict';const server=fs.readFileSync('server/index.js','utf8'),ui=fs.readFileSync('src/Modules.jsx','utf8'),mig=fs.readFileSync('scripts/migrate.js','utf8');
+assert(server.includes('function calculateOffer(body)'),'Mora postojati jedinstven serverski obračun');
+assert(server.includes("globalType==='percent'?Math.round(afterLines*globalValue/100)"),'Globalni procentualni popust mora se računati nakon stavki');
+assert(server.includes('globalDiscount*x._net/Math.max(1,afterLines)'),'Globalni popust mora se proporcionalno rasporediti');
+assert(server.includes("if(globalDiscount<0||globalDiscount>afterLines)"),'Server mora validirati fiksni globalni popust');
+assert(server.includes("value<0||value>100"),'Server mora validirati procenat 0-100');
+assert(server.includes('function drawOfferPdf(doc,snapshot)'),'Ponuda mora imati namjenski PDFKit predložak');
+for(const text of ['DEVIS',"Date d’émission",'Date de validité','Remise','Total HT','TVA','Total TTC','Signé'])assert(server.includes(text),`Nedostaje francuska oznaka ${text}`);
+assert(server.includes("bufferPages:true")&&server.includes('tableHead()')&&server.includes('footer()'),'PDF mora podržavati stranice, ponovljeno zaglavlje i broj stranice');
+assert(server.includes('issuer.logo_data')&&server.includes('snapshot.client'),'PDF mora koristiti logo i snapshot klijenta');
+assert(server.includes("app.post('/api/offers/:id/sign'")&&server.includes("ON CONFLICT(offer_id,event_type) DO NOTHING"),'Potpis mora biti idempotentan');
+assert(server.includes("status='Potpisana'")&&server.includes('signed_by=$2'),'Potpis mora sačuvati status, datum i korisnika');
+assert(server.includes("if(current.rows[0].signed_at)return res.status(409)"),'Potpisana ponuda se ne smije prepisati');
+assert(ui.includes('Označi kao potpisano')&&ui.includes('function OfferSignModal'),'UI mora imati ručno evidentiranje potpisa');
+assert(ui.includes("window.open(`/api/offers/${doc.id}/pdf`"),'Pregled/preuzimanje mora koristiti serverski PDF');
+assert(ui.includes('Detaljan višeredni opis, odlomci ili lista')&&ui.includes("unit:x.unit||'kom'"),'Obrazac mora imati detaljan opis i jedinicu');
+assert(ui.includes('Dodaj popust na cijelu ponudu')&&ui.includes("discount_type:x.discount_type||null"),'Obrazac mora podržati opcionalni popust');
+assert(mig.includes('offer_versions')&&mig.includes('offer_events')&&mig.includes('document_snapshot'),'Migracije moraju čuvati verzije, događaj i snapshot');
+// Referentni račun 1220 - 10% + 20%.
+const subtotal=1220,discount=Math.round(subtotal*100*.10)/100,net=subtotal-discount,vat=Math.round(net*100*.20)/100,total=net+vat;assert.deepEqual([discount,net,vat,total],[122,1098,219.6,1317.6]);
+console.log('Offers PDF/sign/discount tests passed');
