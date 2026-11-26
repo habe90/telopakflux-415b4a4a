@@ -1,0 +1,14 @@
+import fs from'node:fs';import assert from'node:assert/strict';const app=fs.readFileSync('src/App.jsx','utf8'),server=fs.readFileSync('server/index.js','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+const start=app.indexOf('function WorkerOrder('),end=app.indexOf('\nfunction FieldWorkerDay',start),x=app.slice(start,end);
+assert(x.includes('className="worker-note-input"')&&css.includes('.worker-note-input{display:block;width:100%'),'Opis rada mora biti stilizovano polje pune širine');
+assert(x.includes('Dodaj fotografije')&&x.includes('multiple onChange={addPhotos}')&&!x.includes('<input type="file" accept="image/*" capture="environment" onChange={photo}'),'Standardni file input mora biti skriven iza domaćeg dugmeta');
+assert(x.includes('Ukloni fotografiju')&&x.includes('Slanje fotografija {uploadProgress}%'),'Fotografije moraju imati pregled, uklanjanje i napredak');
+assert(x.includes('validPhone=phoneDigits.length>=7&&!/^0+$/.test(phoneDigits)'),'Neupotrebljiv broj od nula mora biti blokiran');
+assert(x.includes('Pozovi klijenta')&&x.includes('Otvori mapu')&&x.includes('{office.label}'),'Moraju postojati akcije klijenta, mape i kancelarije');
+assert(x.includes("editable=job.status==='U toku'")&&x.includes("['Novi','Zakazano'].includes(job.status)"),'Akcije moraju pratiti status');
+assert(x.includes("if(action==='complete'){options.headers={'Content-Type':'application/json'};options.body=JSON.stringify(payload())}"),'Završavanje mora poslati trenutne unose u jednom zahtjevu');
+assert(!x.includes("if(action==='complete')await save()"),'Završavanje ne smije prvo slati odvojeno spremanje');
+assert(server.includes("UPDATE jobs SET work_note=$1,work_photos=$2::jsonb,materials_used=$3::jsonb,status='Završeno',completed_at=now()"),'Server mora atomski sačuvati evidenciju i završiti posao');
+assert(server.includes("WHERE NOT EXISTS(SELECT 1 FROM job_events WHERE company_id=$1 AND job_id=$2 AND event_type='completed')"),'Completed događaj mora biti idempotentan');
+assert(css.includes('@media(max-width:650px)')&&css.includes('overflow-y:auto')&&css.includes('.worker-order-actions{margin:0 -14px -14px'),'Mobilni modal mora skrolati i uredno složiti akcije');
+console.log('Field worker order detail tests passed');
