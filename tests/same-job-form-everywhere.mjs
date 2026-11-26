@@ -3,7 +3,7 @@ const app=fs.readFileSync('src/App.jsx','utf8'),ui=fs.readFileSync('src/Modules.
 
 // Isti obrazac "Novi posao" iz modula Poslovi mora biti ponovo iskorišten (export + import), ne duplirana forma.
 assert(ui.includes('export function JobForm({data,close,save,workers:providedWorkers}){'),'JobForm mora biti izvezen iz Modules.jsx da bi ga App.jsx mogao ponovo koristiti');
-assert(app.includes("import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule, StockModule, MaintenanceModule, ReportsModule, SettingsModule, exportToPDF, JobForm } from './Modules';"),'App.jsx mora uvesti isti JobForm umjesto posebne forme');
+assert(app.includes("import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule, StockModule, MaintenanceModule, ReportsModule, SettingsModule, exportToPDF, JobForm, ModalShell, Field, InfoGrid } from './Modules';"),'App.jsx mora uvesti isti JobForm umjesto posebne forme');
 
 // Stari zasebni obrazac s fiksnim datumom 25.03.2025 i izmišljenim radnicima (Marko Ilić/Ivan Kovač/Petar Jurić) mora biti uklonjen iz aktivnog toka.
 assert(!app.includes('function Modal({close,onCreate,clients})'),'Zastarjeli zasebni obrazac za Novi posao mora biti uklonjen');
