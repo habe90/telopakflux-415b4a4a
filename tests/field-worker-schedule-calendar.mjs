@@ -13,7 +13,7 @@ assert(app.includes("<FieldWorkerSchedule openIntent={recordIntent}"),'Raspored 
 assert(app.includes("setSelected(await fetchJob(j.id))"),'Klik mora otvoriti isti WorkerOrder po stvarnom ID-u');
 assert(app.includes('Nema termina u odabranom periodu.')&&app.includes('Pokušaj ponovo')&&app.includes('Učitavam raspored'),'Učitavanje, greška i prazno stanje moraju biti odvojeni');
 assert(css.includes('.worker-schedule-mobile{display:block')&&css.includes('.worker-week,.worker-month,.worker-month-weekdays,.worker-schedule-empty{display:none}'),'Telefon mora koristiti grupisanu listu, ne sedam zbijenih kolona');
-assert(server.includes("same_name.role='Radnik na terenu'")&&server.includes('same_name.id<>$3'),'Naslijeđena dodjela po imenu mora odbiti nejasna podudaranja istoimenih radnika');
-assert(server.includes("j.worker_id=$3 OR (j.worker_id IS NULL"),'worker_id mora biti mjerodavan kada postoji');
+assert(!server.includes("j.worker_id IS NULL AND lower(trim(j.worker))"),'Naslijeđena dodjela po imenu ne smije davati pristup radniku');
+assert(server.includes("const workerOwnsJob=`j.company_id=$2 AND j.worker_id=$3`"),'Pristup mora zahtijevati izričitu dodjelu putem worker_id');
 assert(app.includes("jobKey(j.date)===isoLocal(d)"),'Termini uključuju sva vremena istog lokalnog dana, uključujući 21:30');
 console.log('Field worker schedule calendar tests passed');
