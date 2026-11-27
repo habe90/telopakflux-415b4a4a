@@ -1,0 +1,14 @@
+import fs from'node:fs';import assert from'node:assert/strict';const app=fs.readFileSync('src/App.jsx','utf8'),css=fs.readFileSync('src/styles.css','utf8');
+assert(app.includes("tab==='Aktivni'?['Novi','Zakazano','U toku'].includes(j.status):tab==='Završeni'?j.status==='Završeno':j.status==='Otkazano'"));
+assert(app.includes("a.status==='U toku'&&b.status!=='U toku'?-1"));
+assert(app.includes('dateKey(a).localeCompare(dateKey(b))'));
+for(const token of ['worker-job-number','worker-job-client-link','worker-job-service','worker-job-address','Termin prošao','priority-badge urgent'])assert(app.includes(token),`Nedostaje ${token}`);
+assert(app.includes("timezone='Europe/Paris'"));assert(app.includes("timeZone:timezone"));
+assert(app.includes("e.stopPropagation();open(j)"));assert(app.includes("onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')"));
+assert(app.includes('savedScroll.current=window.scrollY'));assert(app.includes('window.scrollTo({top:savedScroll.current})'));
+assert(app.includes('onActiveCount?.(list.filter'));assert(app.includes("['Novi','Zakazano','U toku'].includes(j.status)"));
+assert(app.includes('workerActiveCount??liveJobs.filter'));
+assert(app.includes("setSelected(null);setError(e.message||'Ovaj nalog vam više nije dodijeljen.')"));
+assert(app.includes('replaceQuery({q:x||null'));assert(app.includes("queryParams.get('tab')||'Aktivni'"));
+assert(css.includes('.worker-job-cards{grid-template-columns:1fr}'));assert(css.includes('overflow-wrap:anywhere'));
+console.log('Field worker job cards tests passed');
