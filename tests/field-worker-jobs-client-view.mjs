@@ -22,7 +22,7 @@ assert(fw.includes('["Ime klijenta",clientView.client],["Kontakt",clientView.cli
 assert(!fw.includes('onEdit')&&!fw.includes('amount')&&!fw.includes('invoice'),'Ograničen pregled ne smije nuditi uređivanje ni finansijske podatke');
 
 // 4) Server mora provjeriti firmu i dodjelu posla prijavljenom radniku; izmjena ID-a ne smije otkriti tuđ posao.
-assert(server.includes("const workerOwnsJob=`j.company_id=$2 AND (j.worker_id=$3 OR (j.worker_id IS NULL")&&server.includes("same_name.id<>$3"),'Server mora provjeriti firmu, worker_id i nejasne naslijeđene dodjele po imenu');
+assert(server.includes("const workerOwnsJob=`j.company_id=$2 AND j.worker_id=$3`"),'Server mora provjeriti firmu i izričitu dodjelu putem worker_id, bez fallbacka po imenu');
 assert(server.includes("if(!r.rows[0])return res.status(403).json({error:'Ovaj radni nalog nije dodijeljen vama.'})"),'Tuđ ili nepostojeći posao mora vratiti 403, ne podatke drugog klijenta');
 
 // 5) Otvaranje iz obavijesti mora nositi ID zapisa, ne samo stranicu.
