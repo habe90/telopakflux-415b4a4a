@@ -262,7 +262,12 @@ function yToTime(relY,dayEnd=DAY_END){let minutes=DAY_START*60+Math.round(((relY
 
 export function ScheduleModule({openIntent,onIntentHandled}){
  const quickTerm=routeParams().get('quick')==='term';
- const {jobs,setJobs,createJob,updateJob,clients,workers}=useData();
+ const {jobs,setJobs,createJob,updateJob,clients,workers,reload}=useData();
+ const [changeRequests,setChangeRequests]=useState([]);
+ const loadChangeRequests=()=>fetch('/api/schedule-change-requests',{credentials:'include'}).then(r=>r.json()).then(d=>setChangeRequests(Array.isArray(d)?d.filter(x=>x.status==='Otvoren'):[])).catch(()=>{});
+ useEffect(()=>{loadChangeRequests()},[]);
+ const [changeBusyId,setChangeBusyId]=useState(null);
+ const respondChangeRequest=async(req,action)=>{setChangeBusyId(req.id);try{const r=await fetch(`/api/schedule-change-requests/${req.id}/${action}`,{method:'POST',credentials:'include'}),d=await r.json();if(!r.ok)throw new Error(d.error);await loadChangeRequests();if(action==='approve')await reload().catch(()=>{});flash(action==='approve'?`Zahtjev za ${req.no||'posao'} je odobren.`:`Zahtjev za ${req.no||'posao'} je odbijen.`)}catch(e){flash(e.message||'Zahtjev nije obrađen.',true)}finally{setChangeBusyId(null)}};
  const workerNames=workers.map(w=>w.name);
  const [weekStart,setWeekStart]=useState(()=>{const q=routeParams().get('week');return q?mondayOf(parseEUFull(q)):mondayOf(SCHEDULE_TODAY)});
  const [monthCursor,setMonthCursor]=useState(()=>{const q=routeParams().get('month');return q?new Date(Number(q.slice(0,4)),Number(q.slice(5,7))-1,1):new Date(SCHEDULE_TODAY.getFullYear(),SCHEDULE_TODAY.getMonth(),1)});
@@ -353,6 +358,7 @@ export function ScheduleModule({openIntent,onIntentHandled}){
  </div>
  {warning&&<div className="schedule-warning"><AlertTriangle/> {warning}</div>}
  {notice&&<div className="settings-inline-notice"><CheckCircle2/> {notice}</div>}
+ {changeRequests.length>0&&<section className="card schedule-change-requests"><div className="card-head"><div><h3>Zahtjevi za promjenu termina</h3><p>{changeRequests.length} otvoren{changeRequests.length===1?'':'ih'} zahtjev{changeRequests.length===1?'':'a'} od radnika</p></div></div>{changeRequests.map(r=><div className="schedule-change-row" key={r.id}><div><strong>{r.no||`#${r.job_id}`} · {r.client}</strong><span>{r.requested_by_name}: {r.reason}</span>{(r.proposed_date||r.proposed_time)&&<span className="schedule-change-proposed">Predloženo: {r.proposed_date||r.current_date} {r.proposed_time||r.current_time}</span>}</div><div className="schedule-change-actions"><button type="button" className="secondary" disabled={changeBusyId===r.id} onClick={()=>respondChangeRequest(r,'reject')}><Ban/>Odbij</button><button type="button" className="primary" disabled={changeBusyId===r.id} onClick={()=>respondChangeRequest(r,'approve')}><CheckCircle2/>Odobri</button></div></div>)}</section>}
  <section className="card schedule-pro">
   <div className="schedule-nav">
    <div><button type="button" className="secondary" onClick={()=>view==='week'?setWeekStart(d=>addDays(d,-7)):setMonthCursor(d=>new Date(d.getFullYear(),d.getMonth()-1,1))}><ChevronLeft/></button><button type="button" className="secondary today-btn" onClick={()=>{setWeekStart(mondayOf(SCHEDULE_TODAY));setMonthCursor(new Date(SCHEDULE_TODAY.getFullYear(),SCHEDULE_TODAY.getMonth(),1));}}>Danas</button><button type="button" className="secondary" onClick={()=>view==='week'?setWeekStart(d=>addDays(d,7)):setMonthCursor(d=>new Date(d.getFullYear(),d.getMonth()+1,1))}><ChevronRight/></button></div>
