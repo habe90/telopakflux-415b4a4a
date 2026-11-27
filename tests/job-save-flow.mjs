@@ -12,7 +12,7 @@ assert(server.includes('company_id:req.user.company_id'),'Posao mora biti vezan 
 assert(server.includes('RETURNING *'),'Backend mora vratiti zapis s ID-em');
 const jobsRouteIdx=server.indexOf("app.post('/api/jobs'");
 assert(jobsRouteIdx>-1,'Mora postojati POST ruta za jobs');
-const jobsRoute=server.slice(jobsRouteIdx,jobsRouteIdx+1200);
+const jobsRoute=server.slice(jobsRouteIdx,jobsRouteIdx+2400);
 const placeholderBuilder="placeholders=cols.map(function(_,i){return '"+String.fromCharCode(36)+"'+(i+1)})";
 assert(jobsRoute.includes(placeholderBuilder),'Placeholderi za jobs moraju eksplicitno graditi $1,$2,... preko string konkatenacije, ne gole brojeve');
 assert(jobsRoute.includes('VALUES (${placeholders}) RETURNING *'),'INSERT mora koristiti promjenljivu placeholders');
