@@ -5,7 +5,7 @@ const ui=fs.readFileSync('src/Modules.jsx','utf8'),css=fs.readFileSync('src/styl
 // setJobs (fire-and-forget), bez await i bez hvatanja greške servera, pa je termin mogao
 // "nestati" nakon F5 iako je korisnik vidio poruku o uspjehu. Ispravka koristi iste potvrđene
 // createJob/updateJob pozive kao modul Poslovi.
-assert(ui.includes('const {jobs,setJobs,createJob,updateJob,clients,workers}=useData();'),'Raspored mora koristiti iste potvrđene createJob/updateJob pozive kao Poslovi');
+assert(ui.includes('const {jobs,setJobs,createJob,updateJob,clients,workers,reload}=useData();'),'Raspored mora koristiti iste potvrđene createJob/updateJob pozive kao Poslovi');
 assert(ui.includes('const saveJob=async f=>{'),'Čuvanje termina mora biti asinhrono i čekati odgovor servera');
 assert(ui.includes("saved=f.id?await updateJob(f.id,f):await createJob(f);"),'Novi termin mora ići kroz stvarni server poziv, ne kroz izmišljeni id');
 assert(!ui.includes('id:Date.now(),no:`P-${1054+a.length}`'),'Ne smije se izmišljati id/broj termina na klijentu umjesto da ga vrati server');
