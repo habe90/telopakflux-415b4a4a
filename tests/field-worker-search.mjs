@@ -16,7 +16,7 @@ assert(app.includes("aria-label=\"Očisti pretragu\""));
 assert(app.includes("Nema poslova za odabranu pretragu."));
 assert(app.includes("replaceQuery({q:x||null,tab:tab==='Aktivni'?null:tab})"));
 assert(app.includes("normalize=v=>String(v||'').trim().replace(/\\s+/g,' ')"));
-assert(app.includes("tab==='Aktivni'?!['Završeno','Otkazano'].includes(j.status):j.status===tab.slice(0,-1)"));
+assert(app.includes("tab==='Aktivni'?['Novi','Zakazano','U toku'].includes(j.status):tab==='Završeni'?j.status==='Završeno':j.status==='Otkazano'"));
 assert(css.includes('.worker-jobs-search>svg{position:absolute'));
 assert(css.includes('@media(max-width:700px)'));
 console.log('Field worker search tests passed');
