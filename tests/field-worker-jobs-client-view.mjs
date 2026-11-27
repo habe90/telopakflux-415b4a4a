@@ -8,7 +8,7 @@ assert(modules.includes('export function InfoGrid('),'InfoGrid mora biti izvezen
 assert(app.includes("import { ClientsModule, JobsModule, ScheduleModule, OffersModule, InvoicesModule, StockModule, MaintenanceModule, ReportsModule, SettingsModule, exportToPDF, JobForm, ModalShell, Field, InfoGrid } from './Modules';"),'App.jsx mora uvoziti ModalShell/Field/InfoGrid umjesto da ih ostavi nedefinisanim');
 
 // 2) FieldWorkerJobs: klik na karticu/broj otvara posao, klik na ime klijenta otvara ograničen pregled, bez dva prikaza odjednom.
-const fwStart=app.indexOf('function FieldWorkerJobs({openIntent,onIntentHandled})');
+const fwStart=app.indexOf('function FieldWorkerJobs({openIntent,onIntentHandled,onActiveCount,timezone');
 assert(fwStart!==-1,'FieldWorkerJobs mora prihvatiti openIntent da se posao može otvoriti iz obavijesti/pretrage');
 const fwEnd=app.indexOf('\nfunction WorkerOrder',fwStart);
 const fw=app.slice(fwStart,fwEnd);
